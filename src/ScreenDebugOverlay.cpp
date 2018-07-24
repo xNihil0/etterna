@@ -1107,18 +1107,6 @@ class DebugLineWritePreferences : public IDebugLine
 	}
 };
 
-class DebugLineMenuTimer : public IDebugLine
-{
-	RString GetDisplayTitle() override { return MENU_TIMER.GetValue(); }
-	RString GetDisplayValue() override { return RString(); }
-	bool IsEnabled() override { return PREFSMAN->m_bMenuTimer.Get(); }
-	void DoAndLog( RString &sMessageOut ) override
-	{
-		PREFSMAN->m_bMenuTimer.Set( !PREFSMAN->m_bMenuTimer );
-		IDebugLine::DoAndLog( sMessageOut );
-	}
-};
-
 class DebugLineFlushLog : public IDebugLine
 {
 	RString GetDisplayTitle() override { return FLUSH_LOG.GetValue(); }
@@ -1259,7 +1247,6 @@ DECLARE_ONE( DebugLineClearErrors );
 DECLARE_ONE( DebugLineConvertXML );
 DECLARE_ONE( DebugLineWriteProfiles );
 DECLARE_ONE( DebugLineWritePreferences );
-DECLARE_ONE( DebugLineMenuTimer );
 DECLARE_ONE( DebugLineFlushLog );
 DECLARE_ONE( DebugLinePullBackCamera );
 DECLARE_ONE( DebugLineVolumeDown );

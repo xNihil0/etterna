@@ -26,10 +26,6 @@ void ScreenSplash::HandleScreenMessage( const ScreenMessage SM )
 		if( PREPARE_SCREEN )
 			SCREENMAN->PrepareScreen( GetNextScreenName() );
 	}
-	else if( SM == SM_MenuTimer )
-	{
-		StartTransitioningScreen( SM_GoToNextScreen );
-	}
 
 	ScreenWithMenuElements::HandleScreenMessage( SM );
 }

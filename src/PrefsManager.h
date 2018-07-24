@@ -161,7 +161,6 @@ public:
 	Preference<RString> m_NeverCacheList;
 
 	Preference<bool>	m_bOnlyDedicatedMenuButtons;
-	Preference<bool>	m_bMenuTimer;
 
 	Preference<float>	m_fLifeDifficultyScale;
 

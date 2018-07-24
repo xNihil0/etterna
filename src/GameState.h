@@ -72,7 +72,6 @@ public:
 
 	bool CanSafelyEnterGameplay(RString& reason);
 	void SetCompatibleStylesForPlayers();
-	void ForceSharedSidesMatch();
 	void ForceOtherPlayersToCompatibleSteps(PlayerNumber main);
 
 	void Update( float fDelta );
@@ -174,8 +173,6 @@ public:
 	BroadcastOnChange1D<Difficulty,NUM_PLAYERS>		m_PreferredDifficulty;
 	BroadcastOnChange<SortOrder>	m_SortOrder;			// set by MusicWheel
 	SortOrder	m_PreferredSortOrder;		// used by MusicWheel
-	EditMode	m_EditMode;
-	bool		IsEditing() const { return m_EditMode != EditMode_Invalid; }
 
 	int			m_iNumStagesOfThisSong;
 	//Used by GameplayScreen to know if it needs to call NSMAN

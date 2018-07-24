@@ -17,9 +17,6 @@ const int MIN_METER = 1;
  */
 const int MAX_METER = 35;
 
-/** @brief The maximum number of credits for coin mode. */
-const int MAX_NUM_CREDITS = 20;
-
 
 enum Skillset {
 	Skill_Overall,
@@ -82,8 +79,6 @@ enum StepsTypeCategory
 {
 	StepsTypeCategory_Single, /**< One person plays on one side. */
 	StepsTypeCategory_Double, /**< One person plays on both sides. */
-	StepsTypeCategory_Couple, /**< Two players play on their own side. */
-	StepsTypeCategory_Routine, /**< Two players share both sides together. */
 };
 
 /** @brief The different steps types for playing. */
@@ -91,15 +86,11 @@ enum StepsType
 {
 	StepsType_dance_single = 0,
 	StepsType_dance_double,
-	StepsType_dance_couple,
 	StepsType_dance_solo,
 	StepsType_dance_threepanel,
-	StepsType_dance_routine,
 	StepsType_pump_single,
 	StepsType_pump_halfdouble,
 	StepsType_pump_double,
-	StepsType_pump_couple,
-	StepsType_pump_routine,
 	StepsType_kb7_single,
 	StepsType_ez2_single,
 	StepsType_ez2_double,
@@ -107,10 +98,8 @@ enum StepsType
 	StepsType_para_single,
 	StepsType_ds3ddx_single,
 	StepsType_beat_single5,
-	StepsType_beat_versus5,
 	StepsType_beat_double5,
 	StepsType_beat_single7,
-	StepsType_beat_versus7,
 	StepsType_beat_double7,
 	StepsType_maniax_single,
 	StepsType_maniax_double,
@@ -490,28 +479,13 @@ struct DisplayBpms
 enum StyleType
 {
 	StyleType_OnePlayerOneSide,		/**< Single style */
-	StyleType_TwoPlayersTwoSides,		/**< Versus style */
 	StyleType_OnePlayerTwoSides,		/**< Double style */
-	StyleType_TwoPlayersSharedSides,	/**< Routine style */
 	NUM_StyleType,
 	StyleType_Invalid
 };
 const RString& StyleTypeToString( StyleType s );
 StyleType StringToStyleType( const RString& s );
 LuaDeclareType( StyleType );
-
-/** @brief The different types of Edit modes available. */
-enum EditMode
-{
-	EditMode_Practice,
-	EditMode_Home,
-	EditMode_Full,
-	NUM_EditMode,
-	EditMode_Invalid,
-};
-const RString& EditModeToString( EditMode em );
-EditMode StringToEditMode( const RString& s );
-LuaDeclareType( EditMode );
 
 /**
  * @brief The different types of sample music previews available.

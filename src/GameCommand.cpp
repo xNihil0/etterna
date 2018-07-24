@@ -494,13 +494,6 @@ void GameCommand::ApplySelf( const vector<PlayerNumber> &vpns ) const
 		case StyleType_OnePlayerOneSide:
 		case StyleType_OnePlayerTwoSides:
 			break;
-		case StyleType_TwoPlayersTwoSides:
-		case StyleType_TwoPlayersSharedSides:
-			{
-				FOREACH_PlayerNumber( p )
-					GAMESTATE->JoinPlayer( p );
-			}
-			break;
 		default:
 			LuaHelpers::ReportScriptError("Invalid StyleType: " + m_pStyle->m_StyleType);
 		}

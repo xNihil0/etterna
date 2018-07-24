@@ -144,8 +144,7 @@ void ArrowEffects::Update()
 			for (int iColNum = 0; iColNum < MAX_COLS_PER_PLAYER; ++iColNum)
 			{
 				const int iNumCols = pStyle->m_iColsPerPlayer;
-				const int iNumSides = (pStyle->m_StyleType == StyleType_OnePlayerTwoSides ||
-					pStyle->m_StyleType == StyleType_TwoPlayersSharedSides) ? 2 : 1;
+				const int iNumSides = 1;
 				const int iNumColsPerSide = iNumCols / iNumSides;
 				const int iSideIndex = iColNum / iNumColsPerSide;
 				const int iColOnSide = iColNum % iNumColsPerSide;
@@ -534,26 +533,8 @@ float ArrowEffects::GetXPos( const PlayerState* pPlayerState, int iColNum, float
 		switch( pStyle->m_StyleType )
 		{
 			case StyleType_OnePlayerTwoSides:
-			case StyleType_TwoPlayersSharedSides: // fall through?
-				{
-					// find the middle, and split based on iColNum
-					// it's unknown if this will work for routine.
-					const int iMiddleColumn = static_cast<int>(floor(pStyle->m_iColsPerPlayer/2.0f));
-					if( iColNum > iMiddleColumn-1 )
-						fPixelOffsetFromCenter += fEffects[PlayerOptions::EFFECT_XMODE]*-(fYOffset);
-					else
-						fPixelOffsetFromCenter += fEffects[PlayerOptions::EFFECT_XMODE]*fYOffset;
-				}
 				break;
 			case StyleType_OnePlayerOneSide:
-			case StyleType_TwoPlayersTwoSides: // fall through
-				{
-					// the code was the same for both of these cases in StepNXA.
-					if( pPlayerState->m_PlayerNumber == PLAYER_2 )
-						fPixelOffsetFromCenter += fEffects[PlayerOptions::EFFECT_XMODE]*-(fYOffset);
-					else
-						fPixelOffsetFromCenter += fEffects[PlayerOptions::EFFECT_XMODE]*fYOffset;
-				}
 				break;
 			DEFAULT_FAIL(pStyle->m_StyleType);
 		}
@@ -768,9 +749,6 @@ float ArrowEffects::GetGlow(int iCol, float fYOffset, float fPercentFadeToFail, 
 
 float ArrowEffects::GetBrightness( const PlayerState* pPlayerState, float fNoteBeat )
 {
-	if( GAMESTATE->IsEditing() )
-		return 1;
-
 	float fSongBeat = pPlayerState->m_Position.m_fSongBeatVisible;
 	float fBeatsUntilStep = fNoteBeat - fSongBeat;
 

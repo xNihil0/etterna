@@ -952,10 +952,7 @@ void SongUtil::GetPlayableStepsTypes( const Song *pSong, set<StepsType> &vOut )
 			DEFAULT_FAIL( pStyle->m_StyleType );
 			case StyleType_OnePlayerOneSide:
 				continue;
-			case StyleType_TwoPlayersTwoSides:
 			case StyleType_OnePlayerTwoSides:
-			case StyleType_TwoPlayersSharedSides:
-				vpPossibleStyles.erase( vpPossibleStyles.begin() + i );
 				break;
 			}
 		}

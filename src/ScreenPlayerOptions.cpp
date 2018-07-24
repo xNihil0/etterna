@@ -30,8 +30,7 @@ void ScreenPlayerOptions::Init()
 		m_frameContainer.AddChild( m_sprDisqualify[p] );
 	}
 
-	m_bAskOptionsMessage =
-		!GAMESTATE->IsEditing() && PREFSMAN->m_ShowSongOptions == Maybe_ASK;
+	m_bAskOptionsMessage = PREFSMAN->m_ShowSongOptions == Maybe_ASK;
 
 	m_bAcceptedChoices = false;
 	m_bGoToOptions = ( PREFSMAN->m_ShowSongOptions == Maybe_YES );

@@ -73,11 +73,6 @@ public:
 	// PlayerState. -Kyz
 	//bool		m_bNeedsZoomOutWith2Players;
 	/** @brief Can this style use the BeginnerHelper for assisting new people to the game? */
-	bool		m_bCanUseBeginnerHelper;
-	/** 
-	 * @brief Should difficulty selection be locked when using this style?
-	 *
-	 * This is primarily for Couple and Routine styles. */
 	bool		m_bLockDifficulties;
 
 	void StyleInputToGameInput( int iCol, PlayerNumber pn, vector<GameInput>& ret ) const;

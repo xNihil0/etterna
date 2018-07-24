@@ -2,7 +2,6 @@
 #include "GameSoundManager.h"
 #include "GameState.h"
 #include "InputEventPlus.h"
-#include "MenuTimer.h"
 #include "PrefsManager.h"
 #include "RageLog.h"
 #include "ScreenManager.h"
@@ -18,7 +17,6 @@
 REGISTER_SCREEN_CLASS( ScreenWithMenuElements );
 ScreenWithMenuElements::ScreenWithMenuElements()
 {
-	m_MenuTimer = NULL;
 	m_bShouldAllowLateJoin= false;
 }
 
@@ -28,24 +26,10 @@ void ScreenWithMenuElements::Init()
 	MUSIC_ALIGN_BEAT.Load( m_sName, "MusicAlignBeat" );
 	DELAY_MUSIC_SECONDS.Load( m_sName, "DelayMusicSeconds" );
 	CANCEL_TRANSITIONS_OUT.Load( m_sName, "CancelTransitionsOut" );
-	TIMER_SECONDS.Load( m_sName, "TimerSeconds" );
 	TIMER_METRICS_GROUP.Load( m_sName, "TimerMetricsGroup" );
 	Screen::Init();
 
 	ASSERT( this->m_SubActors.empty() );	// don't call Init twice!
-
-	if( TIMER_SECONDS != -1 )
-	{
-		ASSERT( m_MenuTimer == NULL );	// don't load twice
-		m_MenuTimer = new MenuTimer;
-		m_MenuTimer->Load( TIMER_METRICS_GROUP.GetValue() );
-		m_MenuTimer->SetName( "Timer" );
-		if( TIMER_STEALTH )
-			m_MenuTimer->EnableStealth( true );
-		LOAD_ALL_COMMANDS_AND_SET_XY( m_MenuTimer );
-		ResetTimer();
-		this->AddChild( m_MenuTimer );
-	}
 
 	m_sprUnderlay.Load( THEME->GetPathB(m_sName,"underlay") );
 	m_sprUnderlay->SetName("Underlay");
@@ -120,22 +104,11 @@ void ScreenWithMenuElements::BeginScreen()
 
 void ScreenWithMenuElements::HandleScreenMessage( const ScreenMessage SM )
 {
-	if( SM == SM_MenuTimer )
-	{
-		FOREACH_HumanPlayer(p)
-		{
-			InputEventPlus iep;
-			iep.pn = p;
-			MenuStart( iep );
-		}
-	}
-
 	Screen::HandleScreenMessage( SM );
 }
 
 ScreenWithMenuElements::~ScreenWithMenuElements()
 {
-	SAFE_DELETE( m_MenuTimer );
 	FOREACH( Actor*, m_vDecorations, actor )
 		delete *actor;
 }
@@ -222,22 +195,6 @@ void ScreenWithMenuElements::Update( float fDeltaTime )
 	Screen::Update( fDeltaTime );
 }
 
-void ScreenWithMenuElements::ResetTimer()
-{
-	if( m_MenuTimer == NULL )
-		return;
-
-	if( TIMER_SECONDS > 0.0f && (PREFSMAN->m_bMenuTimer || FORCE_TIMER) )
-	{
-		m_MenuTimer->SetSeconds( TIMER_SECONDS );
-		m_MenuTimer->Start();
-	}
-	else
-	{
-		m_MenuTimer->Disable();
-	}
-}
-
 void ScreenWithMenuElements::StartTransitioningScreen( ScreenMessage smSendWhenDone )
 {
 	TweenOffScreen();
@@ -260,12 +217,6 @@ void ScreenWithMenuElements::TweenOnScreen()
 
 void ScreenWithMenuElements::TweenOffScreen()
 {
-	if( m_MenuTimer != nullptr )
-	{
-		m_MenuTimer->SetSeconds( 0 );
-		m_MenuTimer->Stop();
-	}
-
 	this->PlayCommand( "Off" );
 
 	// If we're a stacked screen, then there's someone else between us and the
@@ -293,8 +244,6 @@ void ScreenWithMenuElements::Cancel( ScreenMessage smSendWhenDone )
 	if( STOP_MUSIC_ON_BACK )
 		SOUND->StopMusic();
 
-	if( m_MenuTimer != nullptr )
-		m_MenuTimer->Stop();
 	m_Cancel.StartTransitioning( smSendWhenDone );
 	COMMAND( m_Cancel, "Cancel" );
 }
@@ -304,11 +253,6 @@ bool ScreenWithMenuElements::IsTransitioning()
 	return m_In.IsTransitioning() || m_Out.IsTransitioning() || m_Cancel.IsTransitioning();
 }
 
-void ScreenWithMenuElements::StopTimer()
-{
-	if( m_MenuTimer != nullptr )
-		m_MenuTimer->Stop();
-}
 
 REGISTER_SCREEN_CLASS(ScreenWithMenuElementsBasic);
 REGISTER_SCREEN_CLASS(ScreenWithMenuElementsSimple);

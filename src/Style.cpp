@@ -26,8 +26,6 @@ bool Style::GetUsesCenteredArrows() const
 	switch( m_StyleType )
 	{
 	case StyleType_OnePlayerTwoSides:
-	case StyleType_TwoPlayersSharedSides:
-		return true;
 	default:
 		return false;
 	}
@@ -51,7 +49,7 @@ void Style::StyleInputToGameInput( int iCol, PlayerNumber pn, vector<GameInput>&
 {
 	ASSERT_M( pn < NUM_PLAYERS  &&  iCol < MAX_COLS_PER_PLAYER,
 		ssprintf("P%i C%i", pn, iCol) );
-	bool bUsingOneSide = m_StyleType != StyleType_OnePlayerTwoSides && m_StyleType != StyleType_TwoPlayersSharedSides;
+	bool bUsingOneSide = true;
 
 	FOREACH_ENUM( GameController, gc)
 	{

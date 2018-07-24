@@ -14,7 +14,6 @@ struct MenuRowDef
 	RString		sName;
 	bool		bEnabled{false};
 	MenuRowUpdateEnabled	pfnEnabled{};	// if ! NULL, used instead of bEnabled
-	EditMode	emShowIn{};
 	int			iDefaultChoice{0};
 	vector<RString>		choices;
 	bool		bThemeTitle{false};
@@ -22,7 +21,7 @@ struct MenuRowDef
 
 	MenuRowDef():  sName(""), 
 		choices() {};
-	MenuRowDef( int r, const RString &n, MenuRowUpdateEnabled pe, EditMode s, 
+	MenuRowDef( int r, const RString &n, MenuRowUpdateEnabled pe, 
 		   bool bTT, bool bTI, int d, const char *c0=NULL, 
 		   const char *c1=NULL, const char *c2=NULL, 
 		   const char *c3=NULL, const char *c4=NULL, 
@@ -37,8 +36,7 @@ struct MenuRowDef
 		   const char *c21=NULL, const char *c22=NULL, 
 		   const char *c23=NULL, const char *c24=NULL, 
 		   const char *c25=NULL ): iRowCode(r), sName(n),
-			bEnabled(true), pfnEnabled(pe), emShowIn(s),
-			iDefaultChoice(d), choices(),
+			bEnabled(true), pfnEnabled(pe),	iDefaultChoice(d), choices(),
 			bThemeTitle(bTT), bThemeItems(bTI)
 	{
 #define PUSH( c )	if(c) choices.push_back(c);
@@ -50,10 +48,10 @@ struct MenuRowDef
 #undef PUSH
 	}
 	
-	MenuRowDef(int r, const RString &n, bool e, EditMode s,
+	MenuRowDef(int r, const RString &n, bool e,
 			   bool bTT, bool bTI, int d, vector<RString> &options):
 			iRowCode(r), sName(n), bEnabled(e), pfnEnabled(NULL),
-			emShowIn(s), iDefaultChoice(d), choices(),
+			iDefaultChoice(d), choices(),
 			bThemeTitle(bTT), bThemeItems(bTI)
 	{
 		FOREACH(RString, options, str)
@@ -62,7 +60,7 @@ struct MenuRowDef
 		}
 	}
 	
-	MenuRowDef( int r, const RString &n, bool e, EditMode s, bool bTT, bool bTI, 
+	MenuRowDef( int r, const RString &n, bool e, bool bTT, bool bTI, 
 		   int d, const char *c0=NULL, const char *c1=NULL, 
 		   const char *c2=NULL, const char *c3=NULL, 
 		   const char *c4=NULL, const char *c5=NULL, 
@@ -77,7 +75,7 @@ struct MenuRowDef
 		   const char *c22=NULL, const char *c23=NULL, 
 		   const char *c24=NULL, const char *c25=NULL ):
 		iRowCode(r), sName(n), bEnabled(e), pfnEnabled(NULL),
-		emShowIn(s), iDefaultChoice(d), choices(),
+		iDefaultChoice(d), choices(),
 		bThemeTitle(bTT), bThemeItems(bTI)
 	{
 #define PUSH( c )	if(c) choices.push_back(c);
@@ -89,10 +87,10 @@ struct MenuRowDef
 #undef PUSH
 	}
 	
-	MenuRowDef( int r, const RString &n, bool e, EditMode s, bool bTT, bool bTI,
+	MenuRowDef( int r, const RString &n, bool e, bool bTT, bool bTI,
 		   int d, int low, int high ):
 		iRowCode(r), sName(n), bEnabled(e), pfnEnabled(NULL),
-		emShowIn(s), iDefaultChoice(d), choices(),
+		iDefaultChoice(d), choices(),
 		bThemeTitle(bTT), bThemeItems(bTI)
 	{
 		for ( int i = low; i <= high; i++ )

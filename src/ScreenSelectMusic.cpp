@@ -9,7 +9,6 @@
 #include "GameSoundManager.h"
 #include "GameState.h"
 #include "InputMapper.h"
-#include "MenuTimer.h"
 #include "PlayerState.h"
 #include "PrefsManager.h"
 #include "Profile.h"
@@ -910,20 +909,6 @@ bool ScreenSelectMusic::Input(const InputEventPlus &input)
 					ChangeSteps(input.pn, +1);
 				}
 			}
-			else if (input.MenuI == GAME_BUTTON_MENUUP || input.MenuI == GAME_BUTTON_MENUDOWN) // && TWO_PART_DESELECTS_WITH_MENUUPDOWN
-			{
-				// XXX: should this be called "TwoPartCancelled"?
-				float fSeconds = m_MenuTimer->GetSeconds();
-				if (fSeconds > 10) {
-					Message msg("SongUnchosen");
-					msg.SetParam("Player", input.pn);
-					MESSAGEMAN->Broadcast(msg);
-					// unset all steps
-					FOREACH_ENUM(PlayerNumber, p)
-						m_bStepsChosen[p] = false;
-					m_SelectionState = SelectionState_SelectingSong;
-				}
-			}
 		}
 	}
 
@@ -1122,29 +1107,6 @@ void ScreenSelectMusic::HandleScreenMessage(const ScreenMessage SM)
 	{
 		m_bAllowOptionsMenuRepeat = true;
 	}
-	else if (SM == SM_MenuTimer)
-	{
-		if (m_MusicWheel.IsRouletting())
-		{
-			MenuStart(InputEventPlus());
-			m_MenuTimer->SetSeconds(ROULETTE_TIMER_SECONDS);
-			m_MenuTimer->Start();
-		}
-		else if (DO_ROULETTE_ON_MENU_TIMER  &&  m_MusicWheel.GetSelectedSong() == NULL)
-		{
-			m_MenuTimer->SetSeconds(ROULETTE_TIMER_SECONDS);
-			m_MenuTimer->Start();
-		}
-		else
-		{
-			// Finish sort changing so that the wheel can respond immediately to
-			// our request to choose random.
-			m_MusicWheel.FinishChangingSorts();
-
-			MenuStart(InputEventPlus());
-		}
-		return;
-	}
 	else if (SM == SM_GoToPrevScreen)
 	{
 		/* We may have stray SM_SongChanged messages from the music wheel.
@@ -1338,22 +1300,11 @@ bool ScreenSelectMusic::SelectCurrent(PlayerNumber pn)
 
 	m_soundStart.Play(true);
 
-	// If the MenuTimer has forced us to move on && TWO_PART_CONFIRMS_ONLY,
-	// set Selection State to finalized and move on.
-	if (TWO_PART_CONFIRMS_ONLY)
-	{
-		if (m_MenuTimer->GetSeconds() < 1)
-		{
-			m_SelectionState = SelectionState_Finalized;
-		}
-	}
-
 	if (m_SelectionState == SelectionState_Finalized)
 	{
 #if !defined(WITHOUT_NETWORKING)
 		DLMAN->UpdateDLSpeed(true);
 #endif
-		m_MenuTimer->Stop();
 
 		FOREACH_HumanPlayer(p)
 		{
@@ -1371,7 +1322,6 @@ bool ScreenSelectMusic::SelectCurrent(PlayerNumber pn)
 
 		// Now that Steps have been chosen, set a Style that can play them.
 		GAMESTATE->SetCompatibleStylesForPlayers();
-		GAMESTATE->ForceSharedSidesMatch();
 
 		/* If we're currently waiting on song assets, abort all except the music
 		* and start the music, so if we make a choice quickly before background
@@ -1403,15 +1353,6 @@ bool ScreenSelectMusic::SelectCurrent(PlayerNumber pn)
 		else
 		{
 			StartTransitioningScreen(SM_BeginFadingOut);
-		}
-	}
-	else // !finalized.  Set the timer for selecting difficulty and mods.
-	{
-		float fSeconds = m_MenuTimer->GetSeconds();
-		if (fSeconds < 10)
-		{
-			m_MenuTimer->SetSeconds(TWO_PART_TIMER_SECONDS); // was 13 -aj
-			m_MenuTimer->Start();
 		}
 	}
 	return false;
@@ -1534,9 +1475,6 @@ void ScreenSelectMusic::SwitchToPreferredDifficulty()
 
 void ScreenSelectMusic::AfterMusicChange()
 {
-	if (!m_MusicWheel.IsRouletting())
-		m_MenuTimer->Stall();
-
 	Song* pSong = m_MusicWheel.GetSelectedSong();
 	GAMESTATE->m_pCurSong.Set(pSong);
 	if (pSong != nullptr)

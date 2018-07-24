@@ -11,7 +11,6 @@
 #include "RageMath.h"
 #include "RageSoundManager.h"
 #include "RageTextureManager.h"
-#include "MemoryCardManager.h"
 #include "RageThreads.h"
 #include "RageTimer.h"
 
@@ -289,7 +288,6 @@ void ShutdownGame()
 	SAFE_DELETE( PROFILEMAN ); // PROFILEMAN needs the songs still loaded
 	SAFE_DELETE( CHARMAN );
 	SAFE_DELETE( CRYPTMAN );
-	SAFE_DELETE( MEMCARDMAN );
 	SAFE_DELETE( SONGMAN );
 	SAFE_DELETE( IMAGECACHE );
 	SAFE_DELETE( SONGINDEX );
@@ -1154,7 +1152,6 @@ int sm_main(int argc, char* argv[])
 	CRYPTMAN	= new CryptManager;		// need to do this before ProfileMan
 	if( PREFSMAN->m_bSignProfileData )
 		CRYPTMAN->GenerateGlobalKeys();
-	MEMCARDMAN	= new MemoryCardManager;
 	CHARMAN		= new CharacterManager;
 	SCOREMAN = new ScoreManager;
 	PROFILEMAN	= new ProfileManager;

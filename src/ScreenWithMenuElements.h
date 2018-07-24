@@ -23,9 +23,6 @@ public:
 	bool IsTransitioning();
 	bool AllowCallbackInput() override { return !IsTransitioning(); }
 
-	void StopTimer();
-	void ResetTimer();
-
 	// Sub-classes can hook these and do special actions that won't be triggered automatically by an "On"/"Off" command
 	virtual void TweenOnScreen();
 	virtual void TweenOffScreen();
@@ -42,7 +39,6 @@ protected:
 	void SetHelpText( const RString &s );
 
 	AutoActor			m_sprUnderlay;
-	MenuTimer			*m_MenuTimer;
 	AutoActor			m_sprOverlay;
 	vector<Actor*>		m_vDecorations;
 

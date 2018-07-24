@@ -176,8 +176,6 @@ static StepsType GetTypeFromMode(const RString &mode)
 		return StepsType_dance_single;
 	if( mode == "DOUBLE" )
 		return StepsType_dance_double;
-	if( mode == "COUPLE" )
-		return StepsType_dance_couple;
 	else if( mode == "SOLO" )
 		return StepsType_dance_solo;
 	ASSERT_M(0, "Unrecognized DWI notes format " + mode + "!");
@@ -197,7 +195,6 @@ static NoteData ParseNoteData(RString &step1, RString &step2,
 			g_mapDanceNoteToNoteDataColumn[DANCE_NOTE_PAD1_RIGHT] = 3;
 			break;
 		case StepsType_dance_double:
-		case StepsType_dance_couple:
 			g_mapDanceNoteToNoteDataColumn[DANCE_NOTE_PAD1_LEFT] = 0;
 			g_mapDanceNoteToNoteDataColumn[DANCE_NOTE_PAD1_DOWN] = 1;
 			g_mapDanceNoteToNoteDataColumn[DANCE_NOTE_PAD1_UP] = 2;

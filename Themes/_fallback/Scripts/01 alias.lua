@@ -92,8 +92,6 @@ ActorScroller.scrollthroughallitems = ActorScroller.ScrollThroughAllItems
 ActorScroller.scrollwithpadding = ActorScroller.ScrollWithPadding
 ActorScroller.setfastcatchup = ActorScroller.SetFastCatchup
 
---[[ MenuTimer: just some case changes. ]]
-MenuTimer.setseconds = MenuTimer.SetSeconds
 
 --[[ GameState ]]
 --[[ Aliases for old GAMESTATE timing functions. These have been converted to

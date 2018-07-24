@@ -6,7 +6,6 @@
 
 const ScreenMessage SM_Invalid = "";
 AutoScreenMessage(SM_None);
-AutoScreenMessage(SM_MenuTimer);
 AutoScreenMessage(SM_DoneFadingIn);
 AutoScreenMessage(SM_BeginFadingOut);
 AutoScreenMessage(SM_GoToNextScreen);

@@ -540,11 +540,7 @@ bool ScreenOptions::Input( const InputEventPlus &input )
 
 void ScreenOptions::HandleScreenMessage( const ScreenMessage SM )
 {
-	if( SM == SM_MenuTimer )
-	{
-		this->BeginFadingOut();
-	}
-	else if( SM == SM_BeginFadingOut )
+	if( SM == SM_BeginFadingOut )
 	{
 		if( IsTransitioning() )
 			return; // already transitioning

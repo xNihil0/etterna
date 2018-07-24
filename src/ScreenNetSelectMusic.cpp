@@ -11,7 +11,6 @@
 #include "GameState.h"
 #include "InputEventPlus.h"
 #include "InputMapper.h"
-#include "MenuTimer.h"
 #include "MusicWheel.h"
 #include "NetworkSyncManager.h"
 #include "ProfileManager.h"
@@ -424,7 +423,6 @@ void ScreenNetSelectMusic::HandleScreenMessage( const ScreenMessage SM )
 	}
 	else if( SM == SM_BackFromPlayerOptions )
 	{
-		GAMESTATE->m_EditMode = EditMode_Invalid;
 		// XXX HACK: This will cause ScreenSelectOptions to go back here.
 		NSMAN->OffOptions();
 
@@ -560,7 +558,6 @@ bool ScreenNetSelectMusic::MenuRight( const InputEventPlus &input )
 bool ScreenNetSelectMusic::MenuUp( const InputEventPlus &input )
 {
 	NSMAN->OnOptions();
-	GAMESTATE->m_EditMode = EditMode_Full;
 	SCREENMAN->AddNewScreenToTop( PLAYER_OPTIONS_SCREEN, SM_BackFromPlayerOptions );
 	return true;
 }

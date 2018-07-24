@@ -168,7 +168,6 @@ PrefsManager::PrefsManager() :
 	m_NeverCacheList		( "NeverCacheList", ""),
 
 	m_bOnlyDedicatedMenuButtons	( "OnlyDedicatedMenuButtons",	false ),
-	m_bMenuTimer			( "MenuTimer",			false ),
 
 	m_fLifeDifficultyScale		( "LifeDifficultyScale",	1.0f ),
 
