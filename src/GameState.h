@@ -231,8 +231,6 @@ public:
 	static const float MUSIC_SECONDS_INVALID;
 
 	void ResetMusicStatistics();	// Call this when it's time to play a new song.  Clears the values above.
-	void SetPaused(bool p) { m_paused= p; }
-	bool GetPaused() { return m_paused; }
 	void UpdateSongPosition( float fPositionSeconds, const TimingData &timing, const RageTimer &timestamp = RageZeroTimer );
 	float GetSongPercent( float beat ) const;
 
@@ -242,12 +240,6 @@ public:
 	// used by themes that support heart rate entry.
 	RageTimer m_DanceStartTime;
 	float m_DanceDuration;
-
-	// used in PLAY_MODE_BATTLE
-	float	m_fOpponentHealthPercent;
-
-	// used in PLAY_MODE_RAVE
-	float	m_fTugLifePercentP1;
 
 	PlayerNumber GetBestPlayer() const;
 	StageResult GetStageResult( PlayerNumber pn ) const;
@@ -304,7 +296,6 @@ public:
 	// Award stuff
 	// lowest priority in front, highest priority at the back.
 	deque<StageAward> m_vLastStageAwards[NUM_PLAYERS];
-	deque<PeakComboAward> m_vLastPeakComboAwards[NUM_PLAYERS];
 
 	// PlayerState
 	/** @brief Allow access to each player's PlayerState. */

@@ -199,7 +199,6 @@ public:
 	// Final results:
 	void CalcAwards( PlayerNumber p, bool bGaveUp, bool bUsedAutoplay );
 	StageAward m_StageAward;
-	PeakComboAward m_PeakComboAward;
 
 	int		m_iPersonalHighScoreIndex;
 	int		m_iMachineHighScoreIndex;

@@ -52,7 +52,6 @@ struct HighScoreImpl
 	vector<int> vRescoreJudgeVector;
 	unsigned int iMaxCombo;			// maximum combo obtained [SM5 alpha 1a+]
 	StageAward stageAward;	// stage award [SM5 alpha 1a+]
-	PeakComboAward peakComboAward;	// peak combo award [SM5 alpha 1a+]
 	string	sModifiers;
 	DateTime dateTime;		// return value of time() for when the highscore object was created (immediately after achieved)
 	string sPlayerGuid;	// who made this high score
@@ -101,7 +100,6 @@ bool HighScoreImpl::operator==( const HighScoreImpl& other ) const
 	COMPARE( iScore );
 	COMPARE( iMaxCombo );
 	COMPARE( stageAward );
-	COMPARE( peakComboAward );
 	COMPARE( fPercentDP );
 	COMPARE( fSurviveSeconds );
 	COMPARE( sModifiers );
@@ -256,7 +254,6 @@ HighScoreImpl::HighScoreImpl()
 	fSurviveSeconds = 0.f;
 	iMaxCombo = 0;
 	stageAward = StageAward_Invalid;
-	peakComboAward = PeakComboAward_Invalid;
 	sModifiers = "";
 	dateTime.Init();
 	sPlayerGuid = "";
@@ -303,7 +300,6 @@ XNode *HighScoreImpl::CreateNode() const
 	pNode->AppendChild( "SurviveSeconds",	fSurviveSeconds );
 	pNode->AppendChild( "MaxCombo",			iMaxCombo );
 	pNode->AppendChild( "StageAward",		StageAwardToString(stageAward) );
-	pNode->AppendChild( "PeakComboAward",	PeakComboAwardToString(peakComboAward) );
 	pNode->AppendChild( "Modifiers",		sModifiers );
 	pNode->AppendChild( "DateTime",			dateTime.GetString() );
 	pNode->AppendChild( "PlayerGuid",		sPlayerGuid );
@@ -474,7 +470,6 @@ void HighScoreImpl::LoadFromNode(const XNode *pNode)
 	pNode->GetChildValue("SurviveSeconds",		fSurviveSeconds);
 	pNode->GetChildValue("MaxCombo",			iMaxCombo);
 	pNode->GetChildValue("StageAward", s);		stageAward = StringToStageAward(s);
-	pNode->GetChildValue("PeakComboAward", s);	peakComboAward = StringToPeakComboAward(s);
 	pNode->GetChildValue("Modifiers", s); sModifiers = s;
 	if (fMusicRate == 0.f) {
 		size_t ew = sModifiers.find("xMusic");
@@ -897,7 +892,6 @@ Grade HighScore::GetGrade() const { return m_Impl->grade; }
 unsigned int HighScore::GetScore() const { return m_Impl->iScore; }
 unsigned int HighScore::GetMaxCombo() const { return m_Impl->iMaxCombo; }
 StageAward HighScore::GetStageAward() const { return m_Impl->stageAward; }
-PeakComboAward HighScore::GetPeakComboAward() const { return m_Impl->peakComboAward; }
 float HighScore::GetPercentDP() const { return m_Impl->fPercentDP; }
 float HighScore::GetWifeScore() const { return m_Impl->fWifeScore; }
 float HighScore::GetWifePoints() const { return m_Impl->fWifePoints; }
@@ -943,7 +937,6 @@ void HighScore::SetGrade( Grade g ) { m_Impl->grade = g; }
 void HighScore::SetScore( unsigned int iScore ) { m_Impl->iScore = iScore; }
 void HighScore::SetMaxCombo( unsigned int i ) { m_Impl->iMaxCombo = i; }
 void HighScore::SetStageAward( StageAward a ) { m_Impl->stageAward = a; }
-void HighScore::SetPeakComboAward( PeakComboAward a ) { m_Impl->peakComboAward = a; }
 void HighScore::SetPercentDP( float f ) { m_Impl->fPercentDP = f; }
 void HighScore::SetWifeScore(float f) {m_Impl->fWifeScore = f;}
 void HighScore::SetWifePoints(float f) { m_Impl->fWifePoints= f; }
@@ -1522,7 +1515,6 @@ public:
 	DEFINE_METHOD( GetWifeGrade, GetWifeGrade() )
 	DEFINE_METHOD( ConvertDpToWife, ConvertDpToWife() )
 	DEFINE_METHOD( GetStageAward, GetStageAward() )
-	DEFINE_METHOD( GetPeakComboAward, GetPeakComboAward() )
 	DEFINE_METHOD( GetChordCohesion, GetChordCohesion() )
 	DEFINE_METHOD( GetEtternaValid , GetEtternaValid() )
 	DEFINE_METHOD( HasReplayData, HasReplayData() )
@@ -1554,7 +1546,6 @@ public:
 		ADD_METHOD( GetWifeGrade );
 		ADD_METHOD( GetMaxCombo );
 		ADD_METHOD( GetStageAward );
-		ADD_METHOD( GetPeakComboAward );
 		ADD_METHOD( ToggleEtternaValidation );
 		ADD_METHOD( GetEtternaValid );
 		ADD_METHOD( HasReplayData );

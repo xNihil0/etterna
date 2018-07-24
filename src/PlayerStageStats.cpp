@@ -81,7 +81,6 @@ void PlayerStageStats::InternalInit()
 	m_fLastSecond = 0;
 
 	m_StageAward = StageAward_Invalid;
-	m_PeakComboAward = PeakComboAward_Invalid;
 	m_iPersonalHighScoreIndex = -1;
 	m_iMachineHighScoreIndex = -1;
 	m_bDisqualified = false;
@@ -770,9 +769,6 @@ float PlayerStageStats::GetPercentageOfTaps( TapNoteScore tns ) const
 void PlayerStageStats::CalcAwards( PlayerNumber p, bool bGaveUp, bool bUsedAutoplay )
 {
 	//LOG->Trace( "hand out awards" );
-
-	m_PeakComboAward = PeakComboAward_Invalid;
-
 	if( bGaveUp || bUsedAutoplay )
 		return;
 
@@ -819,27 +815,6 @@ void PlayerStageStats::CalcAwards( PlayerNumber p, bool bGaveUp, bool bUsedAutop
 		m_StageAward = StageAward_Invalid;
 
 	//LOG->Trace( "done with per difficulty awards" );
-
-	// DO give peak combo awards if using easy mods
-	int iComboAtStartOfStage = GetComboAtStartOfStage();
-	int iPeakCombo = GetMaxCombo().m_cnt;
-
-	FOREACH_ENUM( PeakComboAward,pca )
-	{
-		int iLevel = 1000 * (pca+1);
-		bool bCrossedLevel = iComboAtStartOfStage < iLevel && iPeakCombo >= iLevel;
-		//LOG->Trace( "pca = %d, iLevel = %d, bCrossedLevel = %d", pca, iLevel, bCrossedLevel );
-		if( bCrossedLevel )
-			GAMESTATE->m_vLastPeakComboAwards[p].push_back( pca );
-	}
-
-	if( !GAMESTATE->m_vLastPeakComboAwards[p].empty() )
-		m_PeakComboAward = GAMESTATE->m_vLastPeakComboAwards[p].back();
-	else
-		m_PeakComboAward = PeakComboAward_Invalid;
-
-	//LOG->Trace( "done with per combo awards" );
-
 }
 
 bool PlayerStageStats::IsDisqualified() const
@@ -902,7 +877,6 @@ public:
 	DEFINE_METHOD( GetPersonalHighScoreIndex,	m_iPersonalHighScoreIndex )
 	DEFINE_METHOD( GetMachineHighScoreIndex,	m_iMachineHighScoreIndex )
 	DEFINE_METHOD( GetStageAward,				m_StageAward )
-	DEFINE_METHOD( GetPeakComboAward,			m_PeakComboAward )
 	DEFINE_METHOD( IsDisqualified,				IsDisqualified() )
 	DEFINE_METHOD( GetAliveSeconds,				m_fAliveSeconds )
 	DEFINE_METHOD( GetTotalTaps,				GetTotalTaps() )
@@ -1115,7 +1089,6 @@ public:
 		ADD_METHOD( GetPersonalHighScoreIndex );
 		ADD_METHOD( GetMachineHighScoreIndex );
 		ADD_METHOD( GetStageAward );
-		ADD_METHOD( GetPeakComboAward );
 		ADD_METHOD( IsDisqualified );
 		ADD_METHOD( GetPlayedSteps );
 		ADD_METHOD( GetPossibleSteps );

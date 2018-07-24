@@ -494,7 +494,6 @@ static HighScore FillInHighScore(const PlayerStageStats &pss, const PlayerState 
 	hs.SetAliveSeconds( pss.m_fAliveSeconds );
 	hs.SetMaxCombo( pss.GetMaxCombo().m_cnt );
 	hs.SetStageAward( pss.m_StageAward );
-	hs.SetPeakComboAward( pss.m_PeakComboAward );
 
 	vector<RString> asModifiers;
 	{

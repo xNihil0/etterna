@@ -873,8 +873,6 @@ void GameState::ResetStageStatistics()
 		}
 	}
 
-	m_fOpponentHealthPercent = 1;
-	m_fTugLifePercentP1 = 0.5f;
 	FOREACH_PlayerNumber( p )
 	{
 		m_pPlayerState[p]->m_HealthState = HealthState_Alive;
@@ -884,7 +882,6 @@ void GameState::ResetStageStatistics()
 	FOREACH_PlayerNumber( p )
 	{
 		m_vLastStageAwards[p].clear();
-		m_vLastPeakComboAwards[p].clear();
 	}
 
 	// Reset the round seed. Do this here and not in FinishStage so that players
