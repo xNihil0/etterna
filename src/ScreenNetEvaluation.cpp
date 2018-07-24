@@ -189,8 +189,6 @@ void ScreenNetEvaluation::UpdateStats()
 
 	// Only run these commands if the theme has these things shown; not every
 	// theme has them, so don't assume. -aj
-	if(THEME->GetMetricB(m_sName,"ShowGradeArea"))
-		m_Grades[m_pActivePlayer].SetGrade(static_cast<Grade>(NSMAN->m_EvalPlayerData[m_iCurrentPlayer].hs.GetGrade() != Grade_NoData ? NSMAN->m_EvalPlayerData[m_iCurrentPlayer].hs.GetGrade() : NSMAN->m_EvalPlayerData[m_iCurrentPlayer].grade));
 	if(THEME->GetMetricB(m_sName,"ShowScoreArea"))
 		m_textScore[m_pActivePlayer].SetTargetNumber(static_cast<float>(NSMAN->m_EvalPlayerData[m_iCurrentPlayer].score) );
 

@@ -1417,8 +1417,6 @@ void SMOProtocol::StartRequest(NetworkSyncManager* n, short position)
 {
 	if (!n->useSMserver)
 		return;
-	if (GAMESTATE->m_bDemonstrationOrJukebox)
-		return;
 	LOG->Trace("Requesting Start from Server.");
 
 	m_packet.ClearPacket();

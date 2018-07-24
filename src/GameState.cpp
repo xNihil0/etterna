@@ -124,9 +124,6 @@ GameState::GameState() :
 
 	m_pCurGame.Set( NULL );
 	m_timeGameStarted.SetZero();
-	m_bDemonstrationOrJukebox = false;
-
-	m_iNumTimesThroughAttract = -1;	// initial screen will bump this up to 0
 	m_iStageSeed = m_iGameSeed = 0;
 
 	m_PlayMode.Set( PlayMode_Invalid ); // used by IsPlayerEnabled before the first screen
@@ -279,8 +276,6 @@ void GameState::Reset()
 	m_PreferredSortOrder = GetDefaultSort();
 	m_PlayMode.Set( PlayMode_Invalid );
 	m_EditMode = EditMode_Invalid;
-	m_bDemonstrationOrJukebox = false;
-	m_bJukeboxUsesModifiers = false;
 	m_iCurrentStageIndex = 0;
 
 	m_bGameplayLeadIn.Set( false );
@@ -496,10 +491,6 @@ void GameState::BeginGame()
 	m_timeGameStarted.Touch();
 
 	m_vpsNamesThatWereFilled.clear();
-
-	// Play attract on the ending screen, then on the ranking screen
-	// even if attract sounds are set to off.
-	m_iNumTimesThroughAttract = -1;
 }
 
 void GameState::LoadProfiles( bool bLoadEdits )
@@ -597,9 +588,6 @@ int GameState::GetNumStagesForCurrentSongAndStepsOrCourse() const
 // Called by ScreenGameplay. Set the length of the current song.
 void GameState::BeginStage()
 {
-	if( m_bDemonstrationOrJukebox )
-		return;
-
 	// This should only be called once per stage.
 	if( m_iNumStagesOfThisSong != 0 )
 		LOG->Warn( "XXX: m_iNumStagesOfThisSong == %i?", m_iNumStagesOfThisSong );
@@ -651,9 +639,6 @@ void GameState::CancelStage()
 
 void GameState::CommitStageStats()
 {
-	if( m_bDemonstrationOrJukebox )
-		return;
-
 	STATSMAN->CommitStatsToProfiles( &STATSMAN->m_CurStageStats );
 
 	// Update TotalPlaySeconds.
@@ -718,9 +703,6 @@ void GameState::SaveCurrentSettingsToProfile( PlayerNumber pn )
 {
 	if( !PROFILEMAN->IsPersistentProfile(pn) )
 		return;
-	if( m_bDemonstrationOrJukebox )
-		return;
-
 	Profile* pProfile = PROFILEMAN->GetProfile(pn);
 
 	pProfile->SetDefaultModifiers( m_pCurGame, m_pPlayerState[pn]->m_PlayerOptions.GetPreferred().GetSavedPrefsString() );
@@ -1617,32 +1599,6 @@ bool GameState::OneIsHot() const
 	return false;
 }
 
-bool GameState::IsTimeToPlayAttractSounds() const
-{
-	// m_iNumTimesThroughAttract will be -1 from the first attract screen after
-	// the end of a game until the next time FIRST_ATTRACT_SCREEN is reached.
-	// Play attract sounds for this sort span of time regardless of
-	// m_AttractSoundFrequency because it's awkward to have the machine go
-	// silent immediately after the end of a game.
-	if( m_iNumTimesThroughAttract == -1 )
-		return true;
-
-	if( PREFSMAN->m_AttractSoundFrequency == ASF_NEVER )
-		return false;
-
-	// play attract sounds once every m_iAttractSoundFrequency times through
-	if( (m_iNumTimesThroughAttract % PREFSMAN->m_AttractSoundFrequency)==0 )
-		return true;
-
-	return false;
-}
-
-void GameState::VisitAttractScreen( const RString sScreenName )
-{
-	if( sScreenName == CommonMetrics::FIRST_ATTRACT_SCREEN.GetValue() )
-		m_iNumTimesThroughAttract++;
-}
-
 int GameState::GetNumCols(int pn)
 {
 		return m_pPlayerState[pn]->GetNumCols();
@@ -1964,7 +1920,6 @@ public:
 	}
 	DEFINE_METHOD( GetPreferredDifficulty,		m_PreferredDifficulty[Enum::Check<PlayerNumber>(L, 1)] )
 	DEFINE_METHOD( AnyPlayerHasRankingFeats,	AnyPlayerHasRankingFeats() )
-	DEFINE_METHOD( IsDemonstration,			m_bDemonstrationOrJukebox )
 	DEFINE_METHOD( GetPlayMode,			m_PlayMode )
 	DEFINE_METHOD( GetSortOrder,			m_SortOrder )
 	DEFINE_METHOD( GetCurrentStageIndex,		m_iCurrentStageIndex )
@@ -2131,11 +2086,6 @@ public:
 	static int GetGameSeed( T* p, lua_State *L )			{ LuaHelpers::Push( L, p->m_iGameSeed ); return 1; }
 	static int GetStageSeed( T* p, lua_State *L )			{ LuaHelpers::Push( L, p->m_iStageSeed ); return 1; }
 	static int SaveLocalData( T* p, lua_State *L )			{ COMMON_RETURN_SELF; }
-
-	static int SetJukeboxUsesModifiers( T* p, lua_State *L )
-	{
-		p->m_bJukeboxUsesModifiers = BArg(1); COMMON_RETURN_SELF;
-	}
 	static int Reset( T* p, lua_State *L )				{ p->Reset(); COMMON_RETURN_SELF; }
 	static int JoinPlayer( T* p, lua_State *L )				{ p->JoinPlayer(Enum::Check<PlayerNumber>(L, 1)); COMMON_RETURN_SELF; }
 	static int UnjoinPlayer( T* p, lua_State *L )				{ p->UnjoinPlayer(Enum::Check<PlayerNumber>(L, 1)); COMMON_RETURN_SELF; }
@@ -2320,7 +2270,6 @@ public:
 		ADD_METHOD( SetPreferredDifficulty );
 		ADD_METHOD( GetPreferredDifficulty );
 		ADD_METHOD( AnyPlayerHasRankingFeats );
-		ADD_METHOD( IsDemonstration );
 		ADD_METHOD( GetPlayMode );
 		ADD_METHOD( GetSortOrder );
 		ADD_METHOD( GetCurrentStageIndex );
@@ -2361,7 +2310,6 @@ public:
 		ADD_METHOD( GetGameSeed );
 		ADD_METHOD( GetStageSeed );
 		ADD_METHOD( SaveLocalData );
-		ADD_METHOD( SetJukeboxUsesModifiers );
 		ADD_METHOD( Reset );
 		ADD_METHOD( JoinPlayer );
 		ADD_METHOD( UnjoinPlayer );

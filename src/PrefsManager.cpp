@@ -193,7 +193,6 @@ PrefsManager::PrefsManager() :
 	m_bDisqualification		( "Disqualification",			false ),
 	m_ShowDancingCharacters		( "ShowDancingCharacters",		SDC_Off ),
 	m_fGlobalOffsetSeconds		( "GlobalOffsetSeconds",		0 ),
-	m_bShowBeginnerHelper		( "ShowBeginnerHelper",			false ),
 	m_sLanguage			( "Language",				"" ),	// ThemeManager will deal with this invalid language
 	m_iCenterImageTranslateX	( "CenterImageTranslateX",		0 ),
 	m_iCenterImageTranslateY	( "CenterImageTranslateY",		0 ),

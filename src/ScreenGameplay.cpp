@@ -29,7 +29,6 @@
 #include "RageLog.h"
 #include "RageSoundReader.h"
 #include "RageTimer.h"
-#include "ScoreDisplayOni.h"
 #include "ScoreDisplayPercentage.h"
 #include "ScoreKeeperNormal.h"
 #include "ScreenDimensions.h"
@@ -359,24 +358,22 @@ void ScreenGameplay::Init()
 		player++;
 	}
 	
-	if(!GAMESTATE->m_bDemonstrationOrJukebox)
-	{
-		// fill in difficulty of CPU players with that of the first human player
-		// this should not need to worry about step content.
-		FOREACH_PotentialCpuPlayer(p)
-		{
-			PlayerNumber human_pn= GAMESTATE->GetFirstHumanPlayer();
-			GAMESTATE->m_pCurSteps[p].Set( GAMESTATE->m_pCurSteps[human_pn] );
-			if(GAMESTATE->GetCurrentGame()->m_PlayersHaveSeparateStyles)
-			{
-				GAMESTATE->SetCurrentStyle(GAMESTATE->GetCurrentStyle(human_pn), p);
-			}
-		}
 
-		FOREACH_EnabledPlayer(p)
-			ASSERT( GAMESTATE->m_pCurSteps[p].Get() != NULL );
+	// fill in difficulty of CPU players with that of the first human player
+	// this should not need to worry about step content.
+	FOREACH_PotentialCpuPlayer(p)
+	{
+		PlayerNumber human_pn = GAMESTATE->GetFirstHumanPlayer();
+		GAMESTATE->m_pCurSteps[p].Set(GAMESTATE->m_pCurSteps[human_pn]);
+		if (GAMESTATE->GetCurrentGame()->m_PlayersHaveSeparateStyles)
+		{
+			GAMESTATE->SetCurrentStyle(GAMESTATE->GetCurrentStyle(human_pn), p);
+		}
 	}
 
+	FOREACH_EnabledPlayer(p)
+		ASSERT(GAMESTATE->m_pCurSteps[p].Get() != NULL);
+	
 	STATSMAN->m_CurStageStats.m_playMode = GAMESTATE->m_PlayMode;
 	FOREACH_PlayerNumber(pn)
 	{
@@ -415,18 +412,8 @@ void ScreenGameplay::Init()
 		this->AddChild( m_pSongForeground );
 	}
 
-	if( PREFSMAN->m_bShowBeginnerHelper )
-	{
-		m_BeginnerHelper.SetDrawOrder( DRAW_ORDER_BEFORE_EVERYTHING );
-		m_BeginnerHelper.SetXY( SCREEN_CENTER_X, SCREEN_CENTER_Y );
-		this->AddChild( &m_BeginnerHelper );
-	}
-
-	if( !GAMESTATE->m_bDemonstrationOrJukebox )	// only load if we're going to use it
-	{
-		m_Toasty.Load( THEME->GetPathB(m_sName,"toasty") );
-		this->AddChild( &m_Toasty );
-	}
+	m_Toasty.Load(THEME->GetPathB(m_sName, "toasty"));
+	this->AddChild(&m_Toasty);
 
 	// Use the margin function to calculate where the notefields should be and
 	// what size to zoom them to.  This way, themes get margins to put cut-ins
@@ -682,8 +669,7 @@ void ScreenGameplay::Init()
 		this->AddChild( &m_LyricDisplay );
 	}
 
-	if( !GAMESTATE->m_bDemonstrationOrJukebox )	// only load if we're going to use it
-	{
+
 		m_Ready.Load( THEME->GetPathB(m_sName,"ready") );
 		this->AddChild( &m_Ready );
 
@@ -701,7 +687,6 @@ void ScreenGameplay::Init()
 		this->AddChild( &m_textDebug );
 
 		m_GameplayAssist.Init();
-	}
 
 	if( m_pSongBackground != nullptr )
 		m_pSongBackground->Init();
@@ -966,11 +951,8 @@ void ScreenGameplay::LoadNextSong()
 
 		/* Increment the play count even if the player fails.  (It's still popular,
 		 * even if the people playing it aren't good at it.) */
-		if( !GAMESTATE->m_bDemonstrationOrJukebox )
-		{
-			if( pi->m_pn != PLAYER_INVALID )
-				PROFILEMAN->IncrementStepsPlayCount( pSong, pSteps, pi->m_pn );
-		}
+		if( pi->m_pn != PLAYER_INVALID )
+			PROFILEMAN->IncrementStepsPlayCount( pSong, pSteps, pi->m_pn );
 
 		if( pi->m_ptextPlayerOptions )
 			pi->m_ptextPlayerOptions->SetText( pi->GetPlayerState()->m_PlayerOptions.GetCurrent().GetString() );
@@ -997,12 +979,7 @@ void ScreenGameplay::LoadNextSong()
 		// Don't mess with the PlayerController of the Dummy player
 		if( !pi->m_bIsDummy )
 		{
-			if( GAMESTATE->m_bDemonstrationOrJukebox )
-			{
-				pi->GetPlayerState()->m_PlayerController = PC_CPU;
-				pi->GetPlayerState()->m_iCpuSkill = 5;
-			}
-			else if( GAMESTATE->IsCpuPlayer(pi->GetStepsAndTrailIndex()) )
+			 if( GAMESTATE->IsCpuPlayer(pi->GetStepsAndTrailIndex()) )
 			{
 				pi->GetPlayerState()->m_PlayerController = PC_CPU;
 				int iMeter = pSteps->GetMeter();
@@ -1049,51 +1026,29 @@ void ScreenGameplay::LoadNextSong()
 
 	// Set up song-specific graphics.
 
-	// Check to see if any players are in beginner mode.
-	// Note: steps can be different if turn modifiers are used.
-	if( PREFSMAN->m_bShowBeginnerHelper )
-	{
-		FOREACH_EnabledPlayerNumberInfo( m_vPlayerInfo, pi )
-		{
-			PlayerNumber pn = pi->GetStepsAndTrailIndex();
-			if( GAMESTATE->IsHumanPlayer(pn) && GAMESTATE->m_pCurSteps[pn]->GetDifficulty() == Difficulty_Beginner )
-				m_BeginnerHelper.AddPlayer( pn, pi->m_pPlayer->GetNoteData() );
-		}
-	}
-
 	if( m_pSongBackground != nullptr )
 		m_pSongBackground->Unload();
 
 	if( m_pSongForeground != nullptr )
 		m_pSongForeground->Unload();
 
-	if( !PREFSMAN->m_bShowBeginnerHelper || !m_BeginnerHelper.Init(2) )
-	{
-		m_BeginnerHelper.SetVisible( false );
 
-		// BeginnerHelper disabled, or failed to load.
-		if( m_pSongBackground )
-			m_pSongBackground->LoadFromSong( GAMESTATE->m_pCurSong );
+	// BeginnerHelper disabled, or failed to load.
+	if (m_pSongBackground)
+		m_pSongBackground->LoadFromSong(GAMESTATE->m_pCurSong);
 
-		if( !GAMESTATE->m_bDemonstrationOrJukebox )
-		{
-			/* This will fade from a preset brightness to the actual brightness
-			 * (based on prefs and "cover"). The preset brightness may be 0 (to
-			 * fade from black), or it might be 1, if the stage screen has the
-			 * song BG and we're coming from it (like Pump). This used to be done
-			 * in SM_PlayReady, but that means it's impossible to snap to the
-			 * new brightness immediately. */
-			if( m_pSongBackground != nullptr )
-			{
-				m_pSongBackground->SetBrightness( INITIAL_BACKGROUND_BRIGHTNESS );
-				m_pSongBackground->FadeToActualBrightness();
-			}
-		}
-	}
-	else
+	/* This will fade from a preset brightness to the actual brightness
+	* (based on prefs and "cover"). The preset brightness may be 0 (to
+	* fade from black), or it might be 1, if the stage screen has the
+	* song BG and we're coming from it (like Pump). This used to be done
+	* in SM_PlayReady, but that means it's impossible to snap to the
+	* new brightness immediately. */
+	if (m_pSongBackground != nullptr)
 	{
-		m_BeginnerHelper.SetVisible( true );
+		m_pSongBackground->SetBrightness(INITIAL_BACKGROUND_BRIGHTNESS);
+		m_pSongBackground->FadeToActualBrightness();
 	}
+
 
 	FOREACH_EnabledPlayerInfo( m_vPlayerInfo, pi )
 	{
@@ -1198,10 +1153,6 @@ void ScreenGameplay::PlayAnnouncer( const RString &type, float fSeconds, float *
 {
 	if( GAMESTATE->m_fOpponentHealthPercent == 0 )
 		return; // Shut the announcer up
-
-	/* Don't play in demonstration. */
-	if( GAMESTATE->m_bDemonstrationOrJukebox )
-		return;
 
 	/* Don't play before the first beat, or after we're finished. */
 	if( m_DancingState != STATE_DANCING )

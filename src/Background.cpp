@@ -2,7 +2,6 @@
 #include "ActorUtil.h"
 #include "Background.h"
 #include "BackgroundUtil.h"
-#include "BeginnerHelper.h"
 #include "DancingCharacters.h"
 #include "GameConstantsAndTypes.h"
 #include "GameState.h"
@@ -203,17 +202,12 @@ void BackgroundImpl::Init()
 	}
 
 	bool bOneOrMoreChars = false;
-	bool bShowingBeginnerHelper = false;
 	FOREACH_HumanPlayer( p )
 	{
 		bOneOrMoreChars = true;
-		// Disable dancing characters if Beginner Helper will be showing.
-		if( PREFSMAN->m_bShowBeginnerHelper && BeginnerHelper::CanUse(p) &&
-			GAMESTATE->m_pCurSteps[p] && GAMESTATE->m_pCurSteps[p]->GetDifficulty() == Difficulty_Beginner )
-			bShowingBeginnerHelper = true;
 	}
 
-	if( bOneOrMoreChars && !bShowingBeginnerHelper && SHOW_DANCING_CHARACTERS )
+	if( bOneOrMoreChars && SHOW_DANCING_CHARACTERS )
 		m_pDancingCharacters = new DancingCharacters;
 
 	RageColor c = GetBrightnessColor(0);

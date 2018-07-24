@@ -186,7 +186,6 @@ public:
 	Preference<bool>	m_bDisqualification;
 	Preference<ShowDancingCharacters>		m_ShowDancingCharacters;
 	Preference<float>	m_fGlobalOffsetSeconds;
-	Preference<bool>	m_bShowBeginnerHelper;
 	Preference<RString>	m_sLanguage;
 	Preference<int>	m_iCenterImageTranslateX;
 	Preference<int>	m_iCenterImageTranslateY;

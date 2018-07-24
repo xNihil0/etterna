@@ -176,12 +176,7 @@ public:
 	SortOrder	m_PreferredSortOrder;		// used by MusicWheel
 	EditMode	m_EditMode;
 	bool		IsEditing() const { return m_EditMode != EditMode_Invalid; }
-	/**
-	 * @brief Are we in the demonstration or jukebox mode?
-	 *
-	 * ScreenGameplay often does special things when this is set to true. */
-	bool		m_bDemonstrationOrJukebox;
-	bool		m_bJukeboxUsesModifiers;
+
 	int			m_iNumStagesOfThisSong;
 	//Used by GameplayScreen to know if it needs to call NSMAN
 	bool		m_bInNetGameplay = false;
@@ -313,11 +308,6 @@ public:
 	// lowest priority in front, highest priority at the back.
 	deque<StageAward> m_vLastStageAwards[NUM_PLAYERS];
 	deque<PeakComboAward> m_vLastPeakComboAwards[NUM_PLAYERS];
-
-	// Attract stuff
-	int m_iNumTimesThroughAttract;	// negative means play regardless of m_iAttractSoundFrequency setting
-	bool IsTimeToPlayAttractSounds() const;
-	void VisitAttractScreen( const RString sScreenName );
 
 	// PlayerState
 	/** @brief Allow access to each player's PlayerState. */
