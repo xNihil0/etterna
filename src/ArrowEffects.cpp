@@ -1,4 +1,4 @@
-﻿#include "global.h"
+#include "global.h"
 #include "ArrowEffects.h"
 #include "GameConstantsAndTypes.h"
 #include "GameState.h"
@@ -57,6 +57,7 @@ static ThemeMetric<float>	BEAT_PI_HEIGHT( "ArrowEffects", "BeatPIHeight" );
 static ThemeMetric<float>	TINY_PERCENT_BASE( "ArrowEffects", "TinyPercentBase" );
 static ThemeMetric<float>	TINY_PERCENT_GATE( "ArrowEffects", "TinyPercentGate" );
 static ThemeMetric<bool>	DIZZY_HOLD_HEADS( "ArrowEffects", "DizzyHoldHeads" );
+static ThemeMetric<bool>	ANNOYING_HIDSUD_FLASH( "ArrowEffects", "AnnoyingHIDSUDFlash" );
 
 static const PlayerOptions* curr_options= nullptr;
 
@@ -763,7 +764,13 @@ float ArrowEffects::GetGlow(int iCol, float fYOffset, float fPercentFadeToFail, 
 		fPercentVisible = 1 - fPercentFadeToFail;
 
 	const float fDistFromHalf = fabsf( fPercentVisible - 0.5f );
-	return SCALE( fDistFromHalf, 0, 0.5f, 1.3f, 0 );
+
+	if (ANNOYING_HIDSUD_FLASH) {
+		return SCALE(fDistFromHalf, 0, 0.5f, 1.3f, 0);
+	}
+	else {
+		return 0;
+	}
 }
 
 float ArrowEffects::GetBrightness( const PlayerState* pPlayerState, float fNoteBeat )

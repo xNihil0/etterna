@@ -33,8 +33,8 @@ shared_ptr<DownloadManager> DLMAN = nullptr;
 
 static Preference<unsigned int> maxDLPerSecond("maximumBytesDownloadedPerSecond", 0);
 static Preference<unsigned int> maxDLPerSecondGameplay("maximumBytesDownloadedPerSecondDuringGameplay", 1000000);
-static Preference<RString> packListURL("PackListURL", "https://api.etternaonline.com/v2/packs");
-static Preference<RString> serverURL("BaseAPIURL", "https://api.etternaonline.com/v2");
+static Preference<RString> packListURL("PackListURL", "https://etternaapi.xnihilo.live/v2/packs");
+static Preference<RString> serverURL("BaseAPIURL", "https://etternaapi.xnihilo.live/v2");
 static Preference<unsigned int> automaticSync("automaticScoreSync", 1);
 static Preference<unsigned int> downloadPacksToAdditionalSongs("downloadPacksToAdditionalSongs", 0);
 static const string TEMP_ZIP_MOUNT_POINT = "/@temp-zip/";
