@@ -134,6 +134,7 @@ public:
 	int userid;
 	DateTime datetime;
 	vector<pair<float, float>> replayData;
+	string countryCode;
 };
 class DownloadManager
 {
@@ -160,6 +161,7 @@ public:
 	string sessionPass{ "" }; // Currently logged in password
 	string lastVersion{ "" }; // Last version according to server (Or current if non was obtained)
 	string registerPage{ "" }; // Register page from server (Or empty if non was obtained)
+	string countryCode{ "" }; // Get country flag
 	map<string, vector<OnlineScore>> chartLeaderboards;
 	map<Skillset, int> sessionRanks; // Leaderboard ranks for logged in user by skillset
 	map<Skillset, double> sessionRatings;

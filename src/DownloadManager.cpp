@@ -1093,6 +1093,7 @@ void DownloadManager::RequestChartLeaderBoard(string chartkey)
 				tmp.avatar = user.value("avatar", "").c_str();
 				tmp.userid = user.value("userId", 0);				
 				tmp.playerRating = static_cast<float>(user.value("playerRating", 0.0));
+				tmp.countryCode = user.value("countryCode", "").c_str();
 				tmp.wife = static_cast<float>(score.value("wife", 0.0)/100.0);
 				tmp.modifiers = score.value("modifiers", "").c_str();
 				tmp.maxcombo = score.value("maxCombo", 0);
@@ -1139,6 +1140,9 @@ void DownloadManager::RequestChartLeaderBoard(string chartkey)
 				// even more prudent would be to put this last where it belongs, we don't want to screen out scores for players who wouldn't
 				// have had them registered in the first place -mina
 				if (userswithscores.count(tmp.username) == 1)
+					continue;
+
+				if (tmp.countryCode != DLMAN->countryCode)
 					continue;
 
 				userswithscores.emplace(tmp.username);
@@ -1308,6 +1312,7 @@ void DownloadManager::RefreshUserData()
 			FOREACH_ENUM(Skillset, ss)
 				(DLMAN->sessionRatings)[ss] = skillsets->value(SkillsetToString(ss).c_str(), 0.0f);
 			DLMAN->sessionRatings[Skill_Overall] = attr->value("playerRating", DLMAN->sessionRatings[Skill_Overall]);
+			DLMAN->countryCode = attr->value("countryCode", "");
 		}
 		catch (exception e) {
 			FOREACH_ENUM(Skillset, ss)
