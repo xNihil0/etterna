@@ -1,4 +1,4 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 
 #include <dlfcn.h>
 
@@ -8,7 +8,7 @@
 
 static void* Handle = NULL;
 
-#include "RageUtil.h"
+#include "RageUtil/Utils/RageUtil.h"
 #include "ALSA9Dynamic.h"
 
 /* foo_f dfoo = NULL */
@@ -16,8 +16,8 @@ static void* Handle = NULL;
 #include "ALSA9Functions.h"
 #undef FUNC
 
-static const RString lib = "libasound.so.2";
-RString
+static const std::string lib = "libasound.so.2";
+std::string
 LoadALSA()
 {
 	/* If /proc/asound/ doesn't exist, chances are we're on an OSS system.  We
@@ -36,11 +36,11 @@ LoadALSA()
 
 	ASSERT(Handle == NULL);
 
-	Handle = dlopen(lib, RTLD_NOW);
+	Handle = dlopen(lib.c_str(), RTLD_NOW);
 	if (Handle == NULL)
 		return ssprintf("dlopen(%s): %s", lib.c_str(), dlerror());
 
-	RString error;
+	std::string error;
 	/* Eww.  The "new" HW and SW API functions are really prefixed by __,
 	 * eg. __snd_pcm_hw_params_set_rate_near. */
 #define FUNC(ret, name, proto)                                                 \
@@ -71,28 +71,3 @@ UnloadALSA()
 #include "ALSA9Functions.h"
 #undef FUNC
 }
-
-/*
- * (c) 2003-2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

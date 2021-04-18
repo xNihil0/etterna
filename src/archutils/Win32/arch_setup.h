@@ -11,7 +11,7 @@
 #endif
 
 #if defined(__MINGW32__)
-#if !defined(_WINDOWS)
+#if !defined(_WIN32)
 #define _WINDOWS // This isn't defined under all versions of MinGW
 #endif
 #define NEED_CSTDLIB_WORKAROUND // Needed for llabs() in MinGW
@@ -75,20 +75,18 @@ eventually go away) C4355: 'this' : used in base member initializer list
 
 #endif
 
-#include <wchar.h> // needs to be included before our fixes below
+#include <cwchar> // needs to be included before our fixes below
 
 #define lstat stat
 #define fsync _commit
-#define isnan _isnan
-#define isfinite _finite
 
 typedef time_t time_t;
 struct tm;
-struct tm*
-my_localtime_r(const time_t* timep, struct tm* result);
+auto
+my_localtime_r(const time_t* timep, struct tm* result) -> struct tm*;
 #define localtime_r my_localtime_r
-struct tm*
-my_gmtime_r(const time_t* timep, struct tm* result);
+auto
+my_gmtime_r(const time_t* timep, struct tm* result) -> struct tm*;
 #define gmtime_r my_gmtime_r
 #if defined(_MSC_VER)
 void
@@ -98,17 +96,17 @@ my_usleep(unsigned long usec);
 
 // Missing stdint types:
 #if !defined(__MINGW32__) // MinGW headers define these for us
-typedef signed char int8_t;
-typedef signed short int16_t;
-typedef int int32_t;
-typedef __int64 int64_t;
-typedef unsigned char uint8_t;
-typedef signed short int16_t;
-typedef unsigned short uint16_t;
-typedef int int32_t;
-typedef unsigned int uint32_t;
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
+using int8_t = signed char;
+using int16_t = short;
+using int32_t = int;
+using int64_t = long long;
+using uint8_t = unsigned char;
+using int16_t = short;
+using uint16_t = unsigned short;
+using int32_t = int;
+using uint32_t = unsigned int;
+using int64_t = long long;
+using uint64_t = unsigned long long;
 #if defined(_MSC_VER)
 #if _MSC_VER < 1700 // 1700 = VC++ 2011
 #define INT64_C(i) i##i64
@@ -196,28 +194,3 @@ ArchSwap16(uint16_t n)
 #endif
 
 #endif
-
-/*
- * (c) 2002-2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

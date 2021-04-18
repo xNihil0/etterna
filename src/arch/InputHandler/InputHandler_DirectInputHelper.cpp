@@ -1,18 +1,20 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "InputHandler_DirectInputHelper.h"
-#include "RageUtil.h"
-#include "RageLog.h"
+#include "Etterna/Singletons/PrefsManager.h"
+#include "Core/Services/Locator.hpp"
 #include "archutils/Win32/DirectXHelpers.h"
 #include "archutils/Win32/ErrorStrings.h"
 #include "archutils/Win32/GraphicsWindow.h"
 
+#include <algorithm>
+
 #if defined(_MSC_VER)
 #pragma comment(lib, "dinput8.lib")
-#if defined(_WINDOWS)
+#ifdef _WIN32
 #pragma comment(lib, "dxguid.lib")
 #endif
 #endif
-LPDIRECTINPUT8 g_dinput = NULL;
+LPDIRECTINPUT8 g_dinput = nullptr;
 
 static int
 ConvertScancodeToKey(int scancode);
@@ -27,7 +29,7 @@ DIDevice::DIDevice()
 	dev = InputDevice_Invalid;
 	buffered = true;
 	memset(&JoystickInst, 0, sizeof(JoystickInst));
-	Device = NULL;
+	Device = nullptr;
 }
 
 bool
@@ -35,25 +37,27 @@ DIDevice::Open()
 {
 	m_sName = ConvertACPToUTF8(JoystickInst.tszProductName);
 
-	LOG->Trace("Opening device '%s'", m_sName.c_str());
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->trace("Opening device '{}'", m_sName.c_str());
 	buffered = true;
 
 	LPDIRECTINPUTDEVICE8 tmpdevice;
 
 	// load joystick
 	HRESULT hr =
-	  g_dinput->CreateDevice(JoystickInst.guidInstance, &tmpdevice, NULL);
+	  g_dinput->CreateDevice(JoystickInst.guidInstance, &tmpdevice, nullptr);
 	if (hr != DI_OK) {
-		LOG->Info(hr_ssprintf(hr, "OpenDevice: IDirectInput_CreateDevice"));
+		Locator::getLogger()->info(hr_ssprintf(hr, "OpenDevice: IDirectInput_CreateDevice"));
 		return false;
 	}
 	hr = tmpdevice->QueryInterface(IID_IDirectInputDevice8, (LPVOID*)&Device);
 	tmpdevice->Release();
 	if (hr != DI_OK) {
-		LOG->Info(
+		Locator::getLogger()->info(
 		  hr_ssprintf(hr,
 					  "OpenDevice(%s): IDirectInputDevice::QueryInterface",
-					  m_sName.c_str()));
+					  m_sName.c_str())
+			.c_str());
 		return false;
 	}
 
@@ -63,10 +67,7 @@ DIDevice::Open()
 
 	hr = Device->SetCooperativeLevel(GraphicsWindow::GetHwnd(), coop);
 	if (hr != DI_OK) {
-		LOG->Info(hr_ssprintf(
-		  hr,
-		  "OpenDevice(%s): IDirectInputDevice2::SetCooperativeLevel",
-		  m_sName.c_str()));
+		Locator::getLogger()->info(hr_ssprintf(hr, "OpenDevice(%s): IDirectInputDevice2::SetCooperativeLevel", m_sName.c_str()));
 		return false;
 	}
 
@@ -82,10 +83,11 @@ DIDevice::Open()
 			break;
 	}
 	if (hr != DI_OK) {
-		LOG->Info(
+		Locator::getLogger()->info(
 		  hr_ssprintf(hr,
 					  "OpenDevice(%s): IDirectInputDevice2::SetDataFormat",
-					  m_sName.c_str()));
+					  m_sName.c_str())
+			.c_str());
 		return false;
 	}
 
@@ -128,10 +130,11 @@ DIDevice::Open()
 			 * to use less reliable polling. */
 			buffered = false;
 		} else if (hr != DI_OK) {
-			LOG->Info(
+			Locator::getLogger()->info(
 			  hr_ssprintf(hr,
 						  "OpenDevice(%s): IDirectInputDevice2::SetProperty",
-						  m_sName.c_str()));
+						  m_sName.c_str())
+				.c_str());
 			return false;
 		}
 	}
@@ -148,7 +151,7 @@ DIDevice::Close()
 	Device->Unacquire();
 	Device->Release();
 
-	Device = NULL;
+	Device = nullptr;
 	buttons = axes = hats = 0;
 	Inputs.clear();
 }

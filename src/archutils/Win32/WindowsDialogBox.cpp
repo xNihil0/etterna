@@ -1,4 +1,4 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "WindowsDialogBox.h"
 
 WindowsDialogBox::WindowsDialogBox()
@@ -17,14 +17,14 @@ WindowsDialogBox::Run(int iDialog)
 	  hHandle, MAKEINTRESOURCE(iDialog), NULL, DlgProc, (LPARAM)this);
 }
 
-BOOL APIENTRY
+INT_PTR APIENTRY
 WindowsDialogBox::DlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if (msg == WM_INITDIALOG)
 		SetProp(hDlg, "WindowsDialogBox", (HANDLE)lParam);
 
 	WindowsDialogBox* pThis =
-	  (WindowsDialogBox*)GetProp(hDlg, "WindowsDialogBox");
+	  static_cast<WindowsDialogBox*>(GetProp(hDlg, "WindowsDialogBox"));
 	if (pThis == NULL)
 		return FALSE;
 

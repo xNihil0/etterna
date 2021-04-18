@@ -1,9 +1,9 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "InputHandler_SextetStream.h"
-#include "PrefsManager.h"
-#include "RageLog.h"
-#include "RageThreads.h"
-#include "RageUtil.h"
+#include "Etterna/Singletons/PrefsManager.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Misc/RageThreads.h"
+#include "RageUtil/Utils/RageUtil.h"
 
 #include <cerrno>
 #include <cstdio>
@@ -65,7 +65,7 @@ class LineReader
 	// false (line undefined) if there is an error or EOF condition,
 	// true (line = next line from stream) if a whole line is available,
 	// true (line = "") if no error but still waiting for next line.
-	virtual bool ReadLine(RString& line) = 0;
+	virtual bool ReadLine(std::string& line) = 0;
 };
 }
 
@@ -115,8 +115,8 @@ class InputHandler_SextetStream::Impl
   public:
 	Impl(InputHandler_SextetStream* _this)
 	{
-		LOG->Info("Number of button states supported by current "
-				  "InputHandler_SextetStream: %u",
+		Locator::getLogger()->info("Number of button states supported by current "
+				  "InputHandler_SextetStream: {}",
 				  (unsigned)BUTTON_COUNT);
 		continueInputThread = false;
 		timeout_ms = DEFAULT_TIMEOUT_MS;
@@ -145,7 +145,7 @@ class InputHandler_SextetStream::Impl
 		return 0;
 	}
 
-	inline void GetNewState(uint8_t* buffer, RString& line)
+	inline void GetNewState(uint8_t* buffer, std::string& line)
 	{
 		size_t lineLen = line.length();
 		size_t i, cursor;
@@ -197,9 +197,7 @@ class InputHandler_SextetStream::Impl
 				if (bi < BUTTON_COUNT) {
 					if (changes[m] & (1 << n)) {
 						bool value = newStateBuffer[m] & (1 << n);
-						LOG->Trace("SS button index %zu %s",
-								   bi,
-								   value ? "pressed" : "released");
+						Locator::getLogger()->trace("SS button index {} {}", bi, value ? "pressed" : "released");
 						DeviceInput di =
 						  DeviceInput(id, ButtonAtIndex(bi), value, now);
 						ButtonPressed(di);
@@ -214,20 +212,20 @@ class InputHandler_SextetStream::Impl
 
 	void RunInputThread()
 	{
-		RString line;
+		std::string line;
 		LineReader* linereader;
 
-		LOG->Trace("Input thread started; getting line reader");
+		Locator::getLogger()->trace("Input thread started; getting line reader");
 		linereader = getLineReader();
 
 		if (linereader == NULL) {
-			LOG->Warn("Could not open line reader for SextetStream input");
+			Locator::getLogger()->warn("Could not open line reader for SextetStream input");
 		} else {
-			LOG->Trace("Got line reader");
+			Locator::getLogger()->trace("Got line reader");
 			while (continueInputThread) {
-				LOG->Trace("Reading line");
+				Locator::getLogger()->trace("Reading line");
 				if (linereader->ReadLine(line)) {
-					LOG->Trace("Got line: '%s'", line.c_str());
+					Locator::getLogger()->trace("Got line: '{}'", line.c_str());
 					if (line.length() > 0) {
 						uint8_t newStateBuffer[STATE_BUFFER_SIZE];
 						GetNewState(newStateBuffer, line);
@@ -235,11 +233,11 @@ class InputHandler_SextetStream::Impl
 					}
 				} else {
 					// Error or EOF condition.
-					LOG->Trace("Reached end of SextetStream input");
+					Locator::getLogger()->trace("Reached end of SextetStream input");
 					continueInputThread = false;
 				}
 			}
-			LOG->Info("SextetStream input stopped");
+			Locator::getLogger()->info("SextetStream input stopped");
 			delete linereader;
 		}
 	}
@@ -270,12 +268,12 @@ InputHandler_SextetStream::~InputHandler_SextetStream()
 
 REGISTER_INPUT_HANDLER_CLASS(SextetStreamFromFile);
 
-#if defined(_WINDOWS)
+#ifdef _WIN32
 #define DEFAULT_INPUT_FILENAME "\\\\.\\pipe\\StepMania-Input-SextetStream"
 #else
 #define DEFAULT_INPUT_FILENAME "Data/StepMania-Input-SextetStream.in"
 #endif
-static Preference<RString> g_sSextetStreamInputFilename(
+static Preference<std::string> g_sSextetStreamInputFilename(
   "SextetStreamInputFilename",
   DEFAULT_INPUT_FILENAME);
 
@@ -283,7 +281,7 @@ namespace {
 class StdCFileLineReader : public LineReader
 {
   private:
-	// The buffer size isn't critical; the RString will simply be
+	// The buffer size isn't critical; the std::string will simply be
 	// extended until the line is done.
 	static const size_t BUFFER_SIZE = 64;
 	char buffer[BUFFER_SIZE];
@@ -294,24 +292,21 @@ class StdCFileLineReader : public LineReader
   public:
 	StdCFileLineReader(std::FILE* file)
 	{
-		LOG->Info(
-		  "Starting InputHandler_SextetStreamFromFile from open std::FILE");
+		Locator::getLogger()->info("Starting InputHandler_SextetStreamFromFile from open std::FILE");
 		this->file = file;
 	}
 
-	StdCFileLineReader(const RString& filename)
+	StdCFileLineReader(const std::string& filename)
 	{
-		LOG->Info("Starting InputHandler_SextetStreamFromFile from std::FILE "
-				  "with filename '%s'",
+		Locator::getLogger()->info("Starting InputHandler_SextetStreamFromFile from std::FILE with filename '{}'",
 				  filename.c_str());
 		file = std::fopen(filename.c_str(), "rb");
 
 		if (file == NULL) {
-			LOG->Warn("Error opening file '%s' for input (cstdio): %s",
-					  filename.c_str(),
-					  std::strerror(errno));
+			Locator::getLogger()->warn("Error opening file '{}' for input (cstdio): {}",
+					  filename.c_str(), std::strerror(errno));
 		} else {
-			LOG->Info("File opened");
+			Locator::getLogger()->info("File opened");
 			// Disable buffering on the file
 			std::setbuf(file, NULL);
 		}
@@ -326,7 +321,7 @@ class StdCFileLineReader : public LineReader
 
 	virtual bool IsValid() { return file != NULL; }
 
-	virtual bool ReadLine(RString& line)
+	virtual bool ReadLine(std::string& line)
 	{
 		bool afterFirst = false;
 		size_t len;
@@ -375,11 +370,11 @@ class StdCFileHandleImpl : public InputHandler_SextetStream::Impl
 class StdCFileNameImpl : public InputHandler_SextetStream::Impl
 {
   protected:
-	RString filename;
+	std::string filename;
 
   public:
 	StdCFileNameImpl(InputHandler_SextetStreamFromFile* handler,
-					 const RString& filename)
+					 const std::string& filename)
 	  : InputHandler_SextetStream::Impl(handler)
 	{
 		this->filename = filename;
@@ -403,7 +398,7 @@ InputHandler_SextetStreamFromFile::InputHandler_SextetStreamFromFile(FILE* file)
 }
 
 InputHandler_SextetStreamFromFile::InputHandler_SextetStreamFromFile(
-  const RString& filename)
+  const std::string& filename)
 {
 	_impl = new StdCFileNameImpl(this, filename);
 }

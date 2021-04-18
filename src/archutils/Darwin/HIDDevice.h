@@ -13,8 +13,8 @@
 #include <utility>
 #include <ext/hash_map>
 
-#include "RageLog.h"
-#include "RageInputDevice.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Misc/RageInputDevice.h"
 
 /* A few helper functions. */
 
@@ -28,7 +28,7 @@ CFInt(int n)
 inline void
 PrintIOErr(IOReturn err, const char* s)
 {
-	LOG->Warn("%s - %s(%x,%d)", s, mach_error_string(err), err, err & 0xFFFFFF);
+	Locator::getLogger()->warn("{} - {}({:x},{})", s, mach_error_string(err), err, err & 0xFFFFFF);
 }
 
 inline Boolean
@@ -72,7 +72,7 @@ class HIDDevice
 	IOHIDDeviceInterface** m_Interface;
 	IOHIDQueueInterface** m_Queue;
 	bool m_bRunning;
-	RString m_sDescription;
+	std::string m_sDescription;
 
 	static void AddLogicalDevice(const void* value, void* context);
 	static void AddElement(const void* value, void* context);
@@ -103,9 +103,8 @@ class HIDDevice
 	{
 		IOReturn ret = CALL(m_Queue, addElement, cookie, 0);
 		if (ret != KERN_SUCCESS)
-			LOG->Warn("Failed to add HID element with cookie %p to queue: %u",
-					  static_cast<UInt32>(cookie),
-					  ret);
+			Locator::getLogger()->warn("Failed to add HID element with cookie %p to queue: {}",
+					  static_cast<UInt32>(cookie),ret);
 	}
 
 	// Perform a synchronous set report on the HID interface.
@@ -136,7 +135,7 @@ class HIDDevice
 					IOHIDCallbackFunction callback,
 					void* target,
 					int refCon);
-	inline const RString& GetDescription() const { return m_sDescription; }
+	inline const std::string& GetDescription() const { return m_sDescription; }
 
 	/* Add button presses (or releases) to vPresses for the given cookie. More
 	 * than one DeviceInput can be added at a time. For example, Two axes
@@ -163,28 +162,3 @@ class HIDDevice
 };
 
 #endif
-
-/*
- * (c) 2005-2006 Steve Checkoway
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

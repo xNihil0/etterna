@@ -1,7 +1,7 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "USB.h"
-#include "RageLog.h"
-#include "RageUtil.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Utils/RageUtil.h"
 #include "archutils/Win32/ErrorStrings.h"
 
 #if defined(_MSC_VER)
@@ -15,7 +15,7 @@ extern "C" {
 #include "archutils/Win32/ddk/hidsdi.h"
 }
 
-static RString
+static std::string
 GetUSBDevicePath(int iNum)
 {
 	GUID guid;
@@ -30,7 +30,7 @@ GetUSBDevicePath(int iNum)
 	if (!SetupDiEnumDeviceInterfaces(
 		  DeviceInfo, NULL, &guid, iNum, &DeviceInterface)) {
 		SetupDiDestroyDeviceInfoList(DeviceInfo);
-		return RString();
+		return std::string();
 	}
 
 	unsigned long iSize;
@@ -41,7 +41,7 @@ GetUSBDevicePath(int iNum)
 	  (PSP_INTERFACE_DEVICE_DETAIL_DATA)malloc(iSize);
 	DeviceDetail->cbSize = sizeof(SP_INTERFACE_DEVICE_DETAIL_DATA);
 
-	RString sRet;
+	std::string sRet;
 	if (SetupDiGetDeviceInterfaceDetail(
 		  DeviceInfo, &DeviceInterface, DeviceDetail, iSize, &iSize, NULL))
 		sRet = DeviceDetail->DevicePath;
@@ -60,9 +60,9 @@ USBDevice::Open(int iVID,
 {
 	DWORD iIndex = 0;
 
-	RString path;
-	while ((path = GetUSBDevicePath(iIndex++)) != "") {
-		HANDLE h = CreateFile(path,
+	std::string path;
+	while (!(path = GetUSBDevicePath(iIndex++)).empty()) {
+		HANDLE h = CreateFile(path.c_str(),
 							  GENERIC_READ,
 							  FILE_SHARE_READ | FILE_SHARE_WRITE,
 							  NULL,
@@ -136,9 +136,9 @@ WindowsFileIO::~WindowsFileIO()
 }
 
 bool
-WindowsFileIO::Open(const RString& path, int iBlockSize)
+WindowsFileIO::Open(const std::string& path, int iBlockSize)
 {
-	LOG->Trace("WindowsFileIO::open(%s)", path.c_str());
+	Locator::getLogger()->trace("WindowsFileIO::open({})", path.c_str());
 	m_iBlockSize = iBlockSize;
 
 	if (m_pBuffer)
@@ -148,7 +148,7 @@ WindowsFileIO::Open(const RString& path, int iBlockSize)
 	if (m_Handle != INVALID_HANDLE_VALUE)
 		CloseHandle(m_Handle);
 
-	m_Handle = CreateFile(path,
+	m_Handle = CreateFile(path.c_str(),
 						  GENERIC_READ,
 						  FILE_SHARE_READ | FILE_SHARE_WRITE,
 						  NULL,
@@ -175,7 +175,7 @@ WindowsFileIO::queue_read()
 int
 WindowsFileIO::finish_read(void* p)
 {
-	LOG->Trace("this %p, %p", this, p);
+	Locator::getLogger()->trace("this {}, {}", (void*)this, p);
 	/* We do; get the result.  It'll go into the original m_pBuffer
 	 * we supplied on the original call; that's why m_pBuffer is a
 	 * member instead of a local. */
@@ -189,7 +189,7 @@ WindowsFileIO::finish_read(void* p)
 	queue_read();
 
 	if (iRet == 0) {
-		LOG->Warn(werr_ssprintf(GetLastError(), "Error reading USB device"));
+		Locator::getLogger()->warn(werr_ssprintf(GetLastError(), "Error reading USB device"));
 		return -1;
 	}
 
@@ -200,7 +200,7 @@ WindowsFileIO::finish_read(void* p)
 int
 WindowsFileIO::read(void* p)
 {
-	LOG->Trace("WindowsFileIO::read()");
+	Locator::getLogger()->trace("WindowsFileIO::read()");
 
 	/* See if we have a response for our request (which we may
 	 * have made on a previous call): */
@@ -225,8 +225,7 @@ WindowsFileIO::read_several(const vector<WindowsFileIO*>& sources,
 	delete[] Handles;
 
 	if (ret == -1) {
-		LOG->Trace(
-		  werr_ssprintf(GetLastError(), "WaitForMultipleObjectsEx failed"));
+		Locator::getLogger()->trace(werr_ssprintf(GetLastError(), "WaitForMultipleObjectsEx failed"));
 		return -1;
 	}
 

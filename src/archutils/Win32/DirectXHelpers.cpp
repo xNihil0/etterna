@@ -1,6 +1,6 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "DirectXHelpers.h"
-#include "RageUtil.h"
+#include "RageUtil/Utils/RageUtil.h"
 
 #include <windows.h>
 #if defined(USE_DXERR9)
@@ -12,12 +12,12 @@
 #pragma comment(lib, "dxerr.lib")
 #endif
 
-RString
+std::string
 hr_ssprintf(int hr, const char* fmt, ...)
 {
 	va_list va;
 	va_start(va, fmt);
-	RString s = vssprintf(fmt, va);
+	std::string s = vssprintf(fmt, va);
 	va_end(va);
 
 #if defined(USE_DXERR9)

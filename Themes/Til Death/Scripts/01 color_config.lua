@@ -1,4 +1,10 @@
 local defaultConfig = {
+	title = {
+		BG_Left = "#161515",
+		BG_Right = "#222222",
+		Line_Left = "#b87cf0",
+		Line_Right = "#59307f"
+	},
 	main = {
 		highlight = "#614080",
 		frames = "#000111",
@@ -6,6 +12,11 @@ local defaultConfig = {
 		disabled = "#666666",
 		negative = "#FF9999",
 		positive = "#9654FD"
+	},
+	leaderboard = {
+		background = "#111111CC",
+		border = "#000111",
+		text = "#9654FD"
 	},
 	clearType = {
 		MFC = "#66ccff",
@@ -16,7 +27,7 @@ local defaultConfig = {
 		SDG = "#448844",
 		FC = "#66cc66",
 		MF = "#cc6666",
-		SDCB = "#666666",
+		SDCB = "#33bbff",
 		Clear = "#33aaff",
 		Failed = "#e61e25",
 		Invalid = "#e61e25",
@@ -30,16 +41,18 @@ local defaultConfig = {
 		Difficulty_Hard = "#ff6666", -- red
 		Difficulty_Challenge = "#c97bff", -- light blue
 		Difficulty_Edit = "#666666", -- gray
-		Difficulty_Couple = "#ed0972", -- hot pink
-		Difficulty_Routine = "#ff9a00", -- orange
 		Beginner = "#66ccff",
 		Easy = "#099948", -- green
 		Medium = "#ddaa00", -- yellow
 		Hard = "#ff6666", -- red
 		Challenge = "#c97bff", -- Purple
 		Edit = "#666666", -- gray
-		Couple = "#ed0972", -- hot pink
-		Routine = "#ff9a00" -- orange
+		Difficulty_Crazy = "#cc66ff",
+		Difficulty_Freestyle = "#666666",
+		Difficulty_Nightmare = "#666666",
+		Crazy = "#cc66ff",
+		Freestyle = "#666666",
+		Nightmare = "#666666"
 	},
 	difficultyVivid = {
 		Difficulty_Beginner = "#0099ff", -- light blue
@@ -48,35 +61,37 @@ local defaultConfig = {
 		Difficulty_Hard = "#ff0000", -- red
 		Difficulty_Challenge = "#cc66ff", -- light blue
 		Difficulty_Edit = "#666666", -- gray
-		Difficulty_Couple = "#ed0972", -- hot pink
-		Difficulty_Routine = "#ff9a00", -- orange
 		Beginner = "#0099ff", -- light blue
 		Easy = "#00ff00", -- green
 		Medium = "#ffff00", -- yellow
 		Hard = "#ff0000", -- red
 		Challenge = "#cc66ff", -- Purple
 		Edit = "#666666", -- gray
-		Couple = "#ed0972", -- hot pink
-		Routine = "#ff9a00" -- orange
+		Difficulty_Crazy = "#cc66ff",
+		Difficulty_Freestyle = "#666666",
+		Difficulty_Nightmare = "#666666",
+		Crazy = "#cc66ff",
+		Freestyle = "#666666",
+		Nightmare = "#666666"
 	},
-	grade = {
-		Grade_Tier01 = "#66ccff", -- AAAA
-		Grade_Tier02 = "#eebb00", -- AAA
-		Grade_Tier03 = "#66cc66", -- AA
-		Grade_Tier04 = "#da5757", -- A
-		Grade_Tier05 = "#5b78bb", -- B
-		Grade_Tier06 = "#c97bff", -- C
-		Grade_Tier07 = "#8c6239", -- D
-		Grade_Tier08 = "#000000", -- ITG PLS
-		Grade_Tier09 = "#000000", -- ITG PLS
-		Grade_Tier10 = "#000000", -- ITG PLS
-		Grade_Tier11 = "#000000", -- ITG PLS
-		Grade_Tier12 = "#000000", -- ITG PLS
-		Grade_Tier13 = "#000000", -- ITG PLS
-		Grade_Tier14 = "#000000", -- ITG PLS
-		Grade_Tier15 = "#000000", -- ITG PLS
-		Grade_Tier16 = "#000000", -- ITG PLS
-		Grade_Tier17 = "#000000", -- ITG PLS
+	grades = {
+		Grade_Tier01 = "#ffffff", -- AAAAA
+		Grade_Tier02 = "#66ccff", -- AAAA:
+		Grade_Tier03 = "#66ccff", -- AAAA.
+		Grade_Tier04 = "#66ccff", -- AAAA
+		Grade_Tier05 = "#eebb00", -- AAA:
+		Grade_Tier06 = "#eebb00", -- AAA.
+		Grade_Tier07 = "#eebb00", -- AAA
+		Grade_Tier08 = "#66cc66", -- AA:
+		Grade_Tier09 = "#66cc66", -- AA.
+		Grade_Tier10 = "#66cc66", -- AA
+		Grade_Tier11 = "#da5757", -- A:
+		Grade_Tier12 = "#da5757", -- A.
+		Grade_Tier13 = "#da5757", -- A
+		Grade_Tier14 = "#5b78bb", -- B
+		Grade_Tier15 = "#c97bff", -- C
+		Grade_Tier16 = "#8c6239", -- D
+		Grade_Tier17 = "#000000",
 		Grade_Failed = "#cdcdcd", -- F
 		Grade_None = "#666666" -- no play
 	},
@@ -95,11 +110,23 @@ local defaultConfig = {
 		normal = "#FFFFFF", -- normal
 		long = "#ff9a00", --orange
 		marathon = "#da5757" -- red
+	},
+	combo = {
+		Marv_FullCombo = "#00aeef",
+		Perf_FullCombo = "#fff568",
+		FullCombo = "#a4ff00",
+		RegularCombo = "#ffffff",
+		ComboLabel = "#00aeef"
+	},
+	laneCover = {
+		cover = "#333333",
+		bpmText = "#4CBB17",
+		heightText = "#FFFFFF"
 	}
 }
 
 colorConfig = create_setting("colorConfig", "colorConfig.lua", defaultConfig, -1)
-colorConfig:load()
+--colorConfig:load()
 
 --keys to current table. Assumes a depth of 2.
 local curColor = {"", ""}
@@ -112,12 +139,24 @@ function setTableKeys(table)
 	curColor = table
 end
 
+function getDefaultColorForCurColor()
+	return defaultConfig[curColor[1]][curColor[2]]
+end
+
 function getMainColor(type)
 	return color(colorConfig:get_data().main[type])
 end
 
+function getLeaderboardColor(type)
+	return color(colorConfig:get_data().leaderboard[type])
+end
+
+function getLaneCoverColor(type)
+	return color(colorConfig:get_data().laneCover[type])
+end
+
 function getGradeColor(grade)
-	return color(colorConfig:get_data().grade[grade]) or color(colorConfig:get_data().grade["Grade_None"])
+	return color(colorConfig:get_data().grades[grade]) or color(colorConfig:get_data().grades["Grade_None"])
 end
 
 function getDifficultyColor(diff)
@@ -126,6 +165,14 @@ end
 
 function getVividDifficultyColor(diff)
 	return color(colorConfig:get_data().difficultyVivid[diff]) or color("#ffffff")
+end
+
+function getTitleColor(type)
+	return color(colorConfig:get_data().title[type])
+end
+
+function getComboColor(type)
+	return color(colorConfig:get_data().combo[type])
 end
 
 -- expecting ms input (153, 13.321, etc) so convert to seconds to compare to judgment windows -mina
@@ -198,7 +245,7 @@ end
 
 -- i guess if i'm going to use this naming convention it might as well be complete and standardized which means redundancy -mina
 function byGrade(grade)
-	return color(colorConfig:get_data().grade[grade]) or color(colorConfig:get_data().grade["Grade_None"])
+	return color(colorConfig:get_data().grades[grade]) or color(colorConfig:get_data().grades["Grade_None"])
 end
 
 -- Colorized stuff

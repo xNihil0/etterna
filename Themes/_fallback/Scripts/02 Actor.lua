@@ -157,7 +157,7 @@ function Actor:hide_if(b)
 end
 
 function Actor:player(p)
-	self:visible(GAMESTATE:IsHumanPlayer(p))
+	self:visible(GAMESTATE:IsHumanPlayer())
 	return self
 end
 
@@ -395,24 +395,6 @@ function Actor:LyricCommand(side)
 	self:sleep(Var "LyricDuration" * 0.25)
 	self:linear(0.2)
 	self:diffusealpha(0)
-	return self
-end
-
--- formerly in 02 HelpDisplay.lua, although nothing uses it:
-function HelpDisplay:setfromsongorcourse()
-	local Artists = {}
-	local AltArtists = {}
-
-	local Song = GAMESTATE:GetCurrentSong()
-	local Trail = GAMESTATE:GetCurrentTrail(GAMESTATE:GetMasterPlayerNumber())
-	if Song then
-		table.insert(Artists, Song:GetDisplayArtist())
-		table.insert(AltArtists, Song:GetTranslitArtist())
-	elseif Trail then
-		Artists, AltArtists = Trail:GetArtists()
-	end
-
-	self:settips(Artists, AltArtists)
 	return self
 end
 

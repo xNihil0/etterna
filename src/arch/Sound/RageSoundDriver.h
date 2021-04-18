@@ -1,10 +1,9 @@
 #ifndef RAGE_SOUND_DRIVER
 #define RAGE_SOUND_DRIVER
 
-#include "RageThreads.h"
-#include "RageTimer.h"
-#include "RageUtil.h"
-#include "RageUtil_CircularBuffer.h"
+#include "RageUtil/Misc/RageThreads.h"
+#include "RageUtil/Misc/RageTimer.h"
+#include "RageUtil/Utils/RageUtil_CircularBuffer.h"
 #include "arch/RageDriver.h"
 
 class RageSoundBase;
@@ -16,9 +15,9 @@ class RageSoundDriver : public RageDriver
 {
   public:
 	/* Pass an empty string to get the default sound driver list. */
-	static RageSoundDriver* Create(const RString& sDrivers);
+	static RageSoundDriver* Create(const std::string& sDrivers);
 	static DriverList m_pDriverList;
-	static RString GetDefaultSoundDriverList();
+	static std::string GetDefaultSoundDriverList();
 
 	friend class RageSoundManager;
 
@@ -26,7 +25,7 @@ class RageSoundDriver : public RageDriver
 	~RageSoundDriver() override;
 
 	/* Initialize.  On failure, an error message is returned. */
-	virtual RString Init() { return RString(); }
+	virtual std::string Init() { return std::string(); }
 
 	/* A RageSound calls this to request to be played.
 	 * XXX: define what we should do when it can't be played (eg. out of
@@ -240,30 +239,5 @@ class RageSoundDriver : public RageDriver
 	  CreateClass<RageSoundDriver_##x, RageDriver>)
 #define REGISTER_SOUND_DRIVER_CLASS(name)                                      \
 	REGISTER_SOUND_DRIVER_CLASS2(name, name)
-
-/*
- * (c) 2002-2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
 
 #endif

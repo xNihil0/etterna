@@ -21,10 +21,6 @@ function GetExtraColorThreshold()
 		pump = 21,
 		beat = 12,
 		kb7 = 10,
-		para = 10,
-		techno = 10,
-		lights = 10, -- lights shouldn't be playable
-		kickbox = 100 -- extra color is lame
 	}
 	return Modes[CurGameName()] or 10
 end
@@ -89,15 +85,12 @@ end
 -- [en] returns possible modes for ScreenSelectPlayMode
 function GameCompatibleModes()
 	local Modes = {
-		dance = "Single,Double,Solo,Versus,Couple",
-		pump = "Single,Double,HalfDouble,Versus,Couple,Routine",
-		beat = "5Keys,7Keys,10Keys,14Keys,Versus5,Versus7",
+		dance = "Single,Double",
+		pump = "Single,Double,HalfDouble",
+		beat = "5Keys,7Keys,10Keys,14Keys",
 		kb7 = "KB7",
-		para = "Single",
-		maniax = "Single,Double,Versus",
-		-- todo: add versus modes for technomotion
-		techno = "Single4,Single5,Single8,Double4,Double5,Double8",
-		lights = "Single" -- lights shouldn't be playable
+		maniax = "Single,Double",
+		solo = "Single"
 	}
 	return Modes[CurGameName()]
 end
@@ -114,9 +107,8 @@ function ScreenSelectStyleChoices()
 	for i, style in ipairs(styles) do
 		local name = style:GetName()
 		local cap_name = upper_first_letter(name)
-		-- couple-edit and threepanel don't seem like they should actually be
-		-- selectable. -Kyz
-		if name ~= "couple-edit" and name ~= "threepanel" then
+		-- threepanel don't seem like it should actually be selectable. 
+		if name ~= "threepanel" then
 			choices[#choices + 1] =
 				"name," .. cap_name .. ";style," .. name .. ";text," .. cap_name .. ";screen," .. Branch.AfterSelectStyle()
 		end
@@ -173,16 +165,6 @@ end
 -- ScoreKeeperClass:
 -- [en] Determines the correct ScoreKeeper class to use.
 function ScoreKeeperClass()
-	-- rave scorekeeper
-	if GAMESTATE:GetPlayMode() == "PlayMode_Rave" then
-		return "ScoreKeeperRave"
-	end
-	if GAMESTATE:GetCurrentStyle() then
-		local styleType = GAMESTATE:GetCurrentStyle():GetStyleType()
-		if styleType == "StyleType_TwoPlayersSharedSides" then
-			return "ScoreKeeperShared"
-		end
-	end
 	return "ScoreKeeperNormal"
 end
 
@@ -190,7 +172,7 @@ end
 -- [en]
 function ComboContinue()
 	local Continue = {
-		dance = GAMESTATE:GetPlayMode() == "PlayMode_Oni" and "TapNoteScore_W2" or "TapNoteScore_W3",
+		dance = "TapNoteScore_W3",
 		pump = "TapNoteScore_W3",
 		beat = "TapNoteScore_W3",
 		kb7 = "TapNoteScore_W3",
@@ -213,8 +195,6 @@ end
 function ComboPerRow()
 	sGame = CurGameName()
 	if sGame == "pump" then
-		return true
-	elseif GAMESTATE:GetPlayMode() == "PlayMode_Oni" then
 		return true
 	else
 		return false
@@ -264,27 +244,6 @@ function TwoPartSelection()
 	return GAMESTATE:GetCurrentGame():GetName() == "pump" and true or false
 end
 
-local RoutineSkins = {
-	dance = {P1 = "midi-routine-p1", P2 = "midi-routine-p2"},
-	kb7 = {P1 = "default", P2 = "retrobar"},
-	-------------------------------------------------------------
-	default = {P1 = "default", P2 = "default"}
-}
-
-function RoutineSkinP1()
-	if RoutineSkins[CurGameName()] then
-		return RoutineSkins[CurGameName()].P1
-	end
-	return RoutineSkins["default"].P1
-end
-
-function RoutineSkinP2()
-	if RoutineSkins[CurGameName()] then
-		return RoutineSkins[CurGameName()].P2
-	end
-	return RoutineSkins["default"].P2
-end
-
 -- todo: use tables for some of these -aj
 function HoldTiming()
 	return IsGame("pump") and 0 or PREFSMAN:GetPreference("TimingWindowSecondsHold")
@@ -299,32 +258,38 @@ local CodeDetectorCodes = {
 	PrevSteps1 = {
 		default = "",
 		dance = "Up,Up",
+		solo = "Up,Up",
 		pump = "+UpLeft"
 	},
 	PrevSteps2 = {
 		default = "MenuUp,MenuUp",
 		dance = "MenuUp,MenuUp",
+		solo = "MenuUp,MenuUp",
 		pump = ""
 	},
 	NextSteps1 = {
 		default = "",
 		dance = "Down,Down",
+		solo = "Down,Down",
 		pump = "+UpRight"
 	},
 	NextSteps2 = {
 		default = "MenuDown,MenuDown",
 		dance = "MenuDown,MenuDown",
+		solo = "MenuDown,MenuDown",
 		pump = ""
 	},
 	-- group
 	NextGroup = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = ""
 	},
 	PrevGroup = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = ""
 	},
 	CloseCurrentFolder = {
@@ -334,27 +299,32 @@ local CodeDetectorCodes = {
 	NextSort1 = {
 		default = "@MenuLeft-@MenuRight-Start",
 		dance = "@MenuLeft-@MenuRight-Start",
+		solo = "@MenuLeft-@MenuRight-Start",
 		pump = "@MenuLeft-@MenuRight-Start"
 	},
 	NextSort2 = {
 		default = "MenuLeft-MenuRight",
 		dance = "MenuLeft-MenuRight",
+		solo = "MenuLeft-MenuRight",
 		pump = "MenuLeft-MenuRight"
 	},
 	NextSort3 = {
 		default = "",
 		dance = "@Left-@Right-Start",
+		solo = "@Left-@Right-Start",
 		pump = "@DownLeft-@DownRight-Start"
 	},
 	NextSort4 = {
 		default = "",
 		dance = "Left-Right",
+		solo = "Left-Right",
 		pump = "DownLeft-DownRight"
 	},
 	-- modemenu
 	ModeMenu1 = {
 		default = "",
-		dance = "Up,Down,Up,Down"
+		dance = "Up,Down,Up,Down",
+		solo = "Up,Down,Up,Down"
 	},
 	ModeMenu2 = {
 		default = "MenuUp,MenuDown,MenuUp,MenuDown"
@@ -369,88 +339,68 @@ local CodeDetectorCodes = {
 	-- modifiers section
 	CancelAll = {
 		default = "",
-		dance = ""
+		dance = "",
+		solo = ""
 	},
 	--- specific modifiers
 	Mirror = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = "DownRight,DownLeft,UpRight,UpLeft,DownRight,DownLeft,UpRight,UpLeft,Center"
 	},
 	Left = {
 		default = "",
-		dance = ""
+		dance = "",
+		solo = ""
 	},
 	Right = {
 		default = "",
-		dance = ""
+		dance = "",
+		solo = ""
 	},
 	Shuffle = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = "UpLeft,UpRight,UpLeft,UpRight,DownLeft,DownRight,DownLeft,DownRight,Center" -- random
 	},
 	SuperShuffle = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = "UpLeft,UpRight,DownLeft,DownRight,UpLeft,UpRight,DownLeft,DownRight,Center"
 	},
 	Reverse = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = "UpLeft,DownLeft,UpRight,DownRight,UpLeft,DownLeft,UpRight,DownRight,DownRight" -- drop
 	},
-	HoldNotes = {
-		default = "",
-		dance = ""
-	},
 	Mines = {
-		default = ""
-	},
-	Dark = {
 		default = ""
 	},
 	Hidden = {
 		default = "",
 		pump = "UpLeft,UpRight,DownLeft,DownRight,Center" -- vanish
 	},
-	RandomVanish = {
-		default = ""
-	},
-	-- boost (accel), brake (decel), stealth (nonstep)
-	--- next/prev modifiers
-	NextTransform = {
-		default = ""
-	},
 	NextScrollSpeed = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = "UpLeft,UpRight,UpLeft,UpRight,Center"
 	},
 	PreviousScrollSpeed = {
 		default = "",
 		dance = "",
+		solo = "",
 		pump = "UpRight,UpLeft,UpRight,UpLeft,Center"
-	},
-	NextAccel = {
-		default = "",
-		dance = ""
-	},
-	NextEffect = {
-		default = "",
-		dance = ""
-	},
-	NextAppearance = {
-		default = "",
-		dance = ""
-	},
-	NextTurn = {
-		default = ""
 	},
 	-- cancel all in player options
 	CancelAllPlayerOptions = {
 		default = "",
-		dance = ""
+		dance = "",
+		solo = ""
 	}
 }
 

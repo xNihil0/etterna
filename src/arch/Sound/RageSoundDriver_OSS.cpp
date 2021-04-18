@@ -1,10 +1,10 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "RageSoundDriver_OSS.h"
 
-#include "RageLog.h"
-#include "RageSound.h"
-#include "RageSoundManager.h"
-#include "RageUtil.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Sound/RageSound.h"
+#include "RageUtil/Sound/RageSoundManager.h"
+#include "RageUtil/Utils/RageUtil.h"
 
 #if defined(HAVE_UNISTD_H)
 #include <unistd.h>
@@ -46,7 +46,7 @@ RageSoundDriver_OSS::MixerThread()
 	 * < 0, which is silly.  Give it a try, anyway. */
 	int status = nice(-10);
 	if (status != -1)
-		LOG->Trace("Set MixerThread nice value to %d", status);
+		Locator::getLogger()->trace("Set MixerThread nice value to {}", status);
 
 	while (!shutdown) {
 		while (GetData())
@@ -68,7 +68,7 @@ RageSoundDriver_OSS::SetupDecodingThread()
 {
 	int status = nice(-5);
 	if (status != -1)
-		LOG->Trace("Set DecodingThread nice value to %d", status);
+		Locator::getLogger()->trace("Set DecodingThread nice value to {}", status);
 }
 
 bool
@@ -116,33 +116,33 @@ RageSoundDriver_OSS::GetPosition() const
 	return last_cursor_pos - (delay / bytes_per_frame);
 }
 
-RString
+std::string
 RageSoundDriver_OSS::CheckOSSVersion(int fd)
 {
 	int version = 0;
 
 #if defined(HAVE_OSS_GETVERSION)
 	if (ioctl(fd, OSS_GETVERSION, &version) != 0) {
-		LOG->Warn("OSS_GETVERSION failed: %s", strerror(errno));
+		Locator::getLogger()->warn("OSS_GETVERSION failed: {}", strerror(errno));
 		version = 0;
 	}
 #endif
 
-		/*
-		 * Find out if /dev/dsp is really ALSA emulating it.  ALSA's OSS
-		 * emulation has been buggy.  If we got here, we probably failed to init
-		 * ALSA.  The only case I've seen of this so far was not having access
-		 * to /dev/snd devices.
-		 */
-		/* Reliable but only too recently available:
-		if (ioctl(fd, OSS_ALSAEMULVER, &ver) == 0 && ver ) */
+	/*
+	 * Find out if /dev/dsp is really ALSA emulating it.  ALSA's OSS
+	 * emulation has been buggy.  If we got here, we probably failed to init
+	 * ALSA.  The only case I've seen of this so far was not having access
+	 * to /dev/snd devices.
+	 */
+	/* Reliable but only too recently available:
+	if (ioctl(fd, OSS_ALSAEMULVER, &ver) == 0 && ver ) */
 
-		/*
-		 * Ack.  We can't just check for /proc/asound, since a few systems have
-		 * ALSA loaded but actually use OSS.  ALSA returns a specific version;
-		 * check that, too.  It looks like that version is potentially a valid
-		 * OSS version, so check both.
-		 */
+	/*
+	 * Ack.  We can't just check for /proc/asound, since a few systems have
+	 * ALSA loaded but actually use OSS.  ALSA returns a specific version;
+	 * check that, too.  It looks like that version is potentially a valid
+	 * OSS version, so check both.
+	 */
 #ifndef FORCE_OSS
 #define ALSA_SNDRV_OSS_VERSION ((3 << 16) | (8 << 8) | (1 << 4) | (0))
 	if (version == ALSA_SNDRV_OSS_VERSION &&
@@ -162,7 +162,7 @@ RageSoundDriver_OSS::CheckOSSVersion(int fd)
 			rev = (version / 0x00001) % 0x100;
 		}
 
-		LOG->Info("OSS: %i.%i.%i", major, minor, rev);
+		Locator::getLogger()->info("OSS: {}.{}.{}", major, minor, rev);
 	}
 
 	return "";
@@ -173,9 +173,10 @@ RageSoundDriver_OSS::RageSoundDriver_OSS()
 	fd = -1;
 	shutdown = false;
 	last_cursor_pos = 0;
+	samplerate = 44100;
 }
 
-RString
+std::string
 RageSoundDriver_OSS::Init()
 {
 	fd = open("/dev/dsp", O_WRONLY | O_NONBLOCK);
@@ -183,7 +184,7 @@ RageSoundDriver_OSS::Init()
 		return ssprintf("RageSoundDriver_OSS: Couldn't open /dev/dsp: %s",
 						strerror(errno));
 
-	RString sError = CheckOSSVersion(fd);
+	std::string sError = CheckOSSVersion(fd);
 	if (sError != "")
 		return sError;
 
@@ -215,7 +216,7 @@ RageSoundDriver_OSS::Init()
 						i,
 						strerror(errno));
 	samplerate = i;
-	LOG->Trace("RageSoundDriver_OSS: sample rate %i", samplerate);
+	Locator::getLogger()->trace("RageSoundDriver_OSS: sample rate {}", samplerate);
 	i = (num_chunks << 16) + chunk_order;
 	if (ioctl(fd, SNDCTL_DSP_SETFRAGMENT, &i) == -1)
 		return ssprintf(
@@ -235,9 +236,9 @@ RageSoundDriver_OSS::~RageSoundDriver_OSS()
 	if (MixingThread.IsCreated()) {
 		/* Signal the mixing thread to quit. */
 		shutdown = true;
-		LOG->Trace("Shutting down mixer thread ...");
+		Locator::getLogger()->trace("Shutting down mixer thread ...");
 		MixingThread.Wait();
-		LOG->Trace("Mixer thread shut down.");
+		Locator::getLogger()->trace("Mixer thread shut down.");
 	}
 
 	if (fd != -1)
@@ -249,28 +250,3 @@ RageSoundDriver_OSS::GetPlayLatency() const
 {
 	return 0; // (1.0f / samplerate) * (buffersize_frames - chunksize_frames);
 }
-
-/*
- * (c) 2002-2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

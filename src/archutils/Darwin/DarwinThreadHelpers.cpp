@@ -2,7 +2,10 @@
 #include <mach/thread_act.h>
 #include <mach/mach_init.h>
 #include <mach/mach_error.h>
-#include "Backtrace.h"
+#include <Etterna/Globals/global.h>
+
+#include <cmath>
+
 
 bool
 SuspendThread(uint64_t threadHandle)
@@ -22,45 +25,7 @@ GetCurrentThreadId()
 	return mach_thread_self();
 }
 
-bool
-GetThreadBacktraceContext(uint64_t iID, BacktraceContext* ctx)
-{
-	/* Can't GetThreadBacktraceContext the current thread. */
-	ASSERT(iID != GetCurrentThreadId());
-	SuspendThread(iID);
-
-	thread_act_t thread = thread_act_t(iID);
-
-#if defined(__i386__)
-	i386_thread_state_t state;
-	mach_msg_type_number_t count = i386_THREAD_STATE_COUNT;
-
-	if (thread_get_state(
-		  thread, i386_THREAD_STATE, thread_state_t(&state), &count))
-		return false;
-	ctx->ip = (void*)state.__eip;
-	ctx->bp = (void*)state.__ebp;
-	ctx->sp = (void*)state.__esp;
-	return true;
-#elif defined(__x86_64__)
-	x86_thread_state64_t state;
-	mach_msg_type_number_t count = x86_THREAD_STATE64_COUNT;
-
-	if (thread_get_state(
-		  thread, x86_THREAD_STATE64, thread_state_t(&state), &count)) {
-		return false;
-	}
-
-	ctx->ip = (void*)state.__rip;
-	ctx->bp = (void*)state.__rbp;
-	ctx->sp = (void*)state.__rsp;
-	return true;
-#else
-	return false;
-#endif
-}
-
-RString
+std::string
 SetThreadPrecedence(float prec)
 {
 	// Real values are between 0 and 63.
@@ -73,7 +38,7 @@ SetThreadPrecedence(float prec)
 
 	if (ret != KERN_SUCCESS)
 		return mach_error_string(ret);
-	return RString();
+	return std::string();
 }
 
 /*

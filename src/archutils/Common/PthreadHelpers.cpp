@@ -2,15 +2,14 @@
  */
 #include "PthreadHelpers.h"
 
-#include "global.h"
-#include "RageUtil.h"
-#include "RageThreads.h"
-#include "archutils/Unix/Backtrace.h" // HACK: This should be platform-agnosticized
-#if defined(UNIX)
+#include "Etterna/Globals/global.h"
+#include "RageUtil/Utils/RageUtil.h"
+#include "RageUtil/Misc/RageThreads.h"
+#ifdef __unix__
 #include "archutils/Unix/RunningUnderValgrind.h"
 #endif
 
-#if defined(LINUX)
+#ifdef __linux__
 #if defined(HAVE_UNISTD_H)
 #include <unistd.h>
 #endif
@@ -42,7 +41,7 @@ static bool g_bUsingNPTL = false;
 #define _CS_GNU_LIBPTHREAD_VERSION 3
 #endif
 
-RString
+std::string
 ThreadsVersion()
 {
 	char buf[1024] = "(error)";
@@ -198,77 +197,11 @@ ResumeThread(uint64_t ThreadID)
 	// kill( ThreadID, SIGSTOP );
 }
 
-/* Get a BacktraceContext for a thread.  ThreadID must not be the current
- * thread.
- *
- * tid() is a PID (from getpid) or a TID (from gettid).  Note that this may have
- * kernel compatibility problems, because NPTL is new and its interactions with
- * ptrace() aren't well-defined. If we're on a non-NPTL system, tid is a regular
- * PID.
- *
- * This call leaves the given thread suspended, so the returned context doesn't
- * become invalid. ResumeThread() can be used to resume a thread after this
- * call. */
-#if defined(CRASH_HANDLER)
-bool
-GetThreadBacktraceContext(uint64_t ThreadID, BacktraceContext* ctx)
-{
-	/* Can't GetThreadBacktraceContext the current thread. */
-	ASSERT(ThreadID != GetCurrentThreadId());
-
-	/* Attach to the thread.  This may fail with EPERM.  This can happen for at
-	 * least two common reasons: the process might be in a debugger already, or
-	 * *we* might already have attached to it via SuspendThread.
-	 *
-	 * If it's in a debugger, we won't be able to ptrace(PTRACE_GETREGS). If
-	 * it's us that attached, we will. */
-	if (PtraceAttach(int(ThreadID)) == -1 && errno != EPERM) {
-		CHECKPOINT_M(ssprintf("%s (pid %i tid %i locking tid %i)",
-							  strerror(errno),
-							  getpid(),
-							  (int)GetCurrentThreadId(),
-							  int(ThreadID)));
-		return false;
-	}
-
-#if defined(CPU_X86_64) || defined(CPU_X86)
-	user_regs_struct regs;
-	if (ptrace(PTRACE_GETREGS, pid_t(ThreadID), NULL, &regs) == -1)
-		return false;
-
-	ctx->pid = pid_t(ThreadID);
-#if defined(CPU_X86_64)
-	ctx->ip = (void*)regs.rip;
-	ctx->bp = (void*)regs.rbp;
-	ctx->sp = (void*)regs.rsp;
-#else
-	ctx->ip = (void*)regs.eip;
-	ctx->bp = (void*)regs.ebp;
-	ctx->sp = (void*)regs.esp;
-#endif
-#elif defined(CPU_PPC)
-	errno = 0;
-	ctx->FramePtr = (const Frame*)ptrace(
-	  PTRACE_PEEKUSER, pid_t(ThreadID), (void*)(PT_R1 << 2), 0);
-	if (errno)
-		return false;
-	ctx->PC =
-	  (void*)ptrace(PTRACE_PEEKUSER, pid_t(ThreadID), (void*)(PT_NIP << 2), 0);
-	if (errno)
-		return false;
-#else
-#error GetThreadBacktraceContext: which arch?
-#endif
-
-	return true;
-}
-#endif
-
-#elif defined(UNIX)
+#elif defined(__unix__)
 #include <pthread.h>
 #include <signal.h>
 
-RString
+std::string
 ThreadsVersion()
 {
 	return "(unknown)";
@@ -292,28 +225,3 @@ ResumeThread(uint64_t id)
 	return pthread_kill(pthread_t(id), SIGCONT);
 }
 #endif
-
-/*
- * (c) 2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

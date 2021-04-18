@@ -11,30 +11,15 @@ local minidoots = {
 	"Expert-Expanded"
 }
 local diffcolors = {"#66ccff", "#099948", "#ddaa00", "#ff6666", "#c97bff"}
-local pressingtab
 local moving
 
 local function input(event)
-	if event.DeviceInput.button == "DeviceButton_tab" then
-		if event.type == "InputEventType_FirstPress" then
-			pressingtab = true
-		elseif event.type == "InputEventType_Release" then
-			pressingtab = false
-		end
-	elseif event.DeviceInput.button == "DeviceButton_mousewheel up" and event.type == "InputEventType_FirstPress" then
+	if (event.DeviceInput.button == "DeviceButton_mousewheel up" or event.button == "MenuUp" or event.button == "MenuLeft") and event.type == "InputEventType_FirstPress" then
 		moving = true
-		if pressingtab == true then
-			MESSAGEMAN:Broadcast("WheelUpFast")
-		else
-			MESSAGEMAN:Broadcast("WheelUpSlow")
-		end
-	elseif event.DeviceInput.button == "DeviceButton_mousewheel down" and event.type == "InputEventType_FirstPress" then
+		MESSAGEMAN:Broadcast("WheelUpSlow")
+	elseif (event.DeviceInput.button == "DeviceButton_mousewheel down" or event.button == "MenuDown" or event.button == "MenuRight") and event.type == "InputEventType_FirstPress" then
 		moving = true
-		if pressingtab == true then
-			MESSAGEMAN:Broadcast("WheelDownFast")
-		else
-			MESSAGEMAN:Broadcast("WheelDownSlow")
-		end
+		MESSAGEMAN:Broadcast("WheelDownSlow")
 	elseif event.DeviceInput.button == "DeviceButton_left mouse button" then
 		if event.type == "InputEventType_Release" then
 			MESSAGEMAN:Broadcast("MouseLeftClick")
@@ -61,6 +46,17 @@ local function highlightIfOver(self)
 	end
 end
 
+local translated_info = {
+	Selected = THEME:GetString("ScreenBundleSelect", "Selected Bundle"),
+	AverageDiff = THEME:GetString("ScreenBundleSelect", "AverageDiff"),
+	TotalSize = THEME:GetString("ScreenBundleSelect", "TotalSize"),
+	MB = THEME:GetString("ScreenBundleSelect", "MB"),
+	DownloadAll = THEME:GetString("ScreenBundleSelect", "DownloadAll"),
+	GoBack = THEME:GetString("ScreenBundleSelect", "GoBack"),
+	Expanded = THEME:GetString("ScreenBundleSelect", "Expanded"),
+	Explanation = THEME:GetString("ScreenBundleSelect", "Explanation")
+}
+
 local width = SCREEN_WIDTH / 3
 local tzoom = 0.5
 local packh = 36
@@ -68,7 +64,7 @@ local packgap = 4
 local packspacing = packh + packgap
 local offx = 10
 local offy = 40
-local packlist
+local packtable
 local ind = 0
 
 local o =
@@ -76,7 +72,7 @@ local o =
 	InitCommand = function(self)
 		self:xy(offx + width / 2, 0):halign(0.5):valign(0)
 		self:GetChild("PacklistDisplay"):xy(SCREEN_WIDTH / 2.5 - offx - (offx + width / 2), offy * 2 + 14):visible(false) --- uuuu messy... basically cancel out the x coord of the parent
-		packlist = DLMAN:GetPacklist()
+		packlist = PackList:new()
 		self:SetUpdateFunction(highlight)
 	end,
 	BeginCommand = function(self)
@@ -102,9 +98,7 @@ local o =
 				self:xy(width / 2 + offx, 24):zoom(tzoom):halign(0)
 			end,
 			OnCommand = function(self)
-				self:settext(
-					"Core bundles are diverse selections of packs that span a skill range.\nExpanded sets contain more files and are larger downloads.\nPacks you already have will be skipped"
-				)
+				self:settext(translated_info["Explanation"])
 			end
 		},
 	LoadFont("Common Large") ..
@@ -114,7 +108,7 @@ local o =
 				self:xy(width / 2 + offx, offy * 2 - 20):zoom(0.4):halign(0)
 			end,
 			PackTableRefreshCommand = function(self)
-				self:settextf("Selected Bundle: %s", minidoots[ind]:gsub("-Expanded", " (expanded)")):diffuse(
+				self:settextf("%s: %s", translated_info["Selected"], minidoots[ind]:gsub("-Expanded", " ("..translated_info["Expanded"]..")")):diffuse(
 					color(diffcolors[math.ceil(ind / 2)])
 				)
 			end
@@ -126,7 +120,7 @@ local o =
 				self:xy(width / 2 + offx, offy * 2):zoom(tzoom + 0.1):halign(0):maxwidth(width / 2 / tzoom)
 			end,
 			PackTableRefreshCommand = function(self)
-				self:settextf("Average Difficulty: %0.2f", packlist:GetAvgDiff()):diffuse(byMSD(packlist:GetAvgDiff()))
+				self:settextf("%s: %0.2f", translated_info["AverageDiff"], packtable.AveragePackDifficulty):diffuse(byMSD(packtable.AveragePackDifficulty))
 			end
 		},
 	LoadFont("Common normal") ..
@@ -136,7 +130,7 @@ local o =
 				self:xy(width * 2 + width / 2 - 150, offy * 2):zoom(tzoom + 0.1):halign(1):maxwidth(width / 2 / tzoom)
 			end,
 			PackTableRefreshCommand = function(self)
-				self:settextf("Total Size: %i(MB)", packlist:GetTotalSize()):diffuse(byFileSize(packlist:GetTotalSize()))
+				self:settextf("%s: %i(%s)", translated_info["TotalSize"], packtable.TotalSize, translated_info["MB"]):diffuse(byFileSize(packtable.TotalSize))
 			end
 		},
 	LoadFont("Common normal") ..
@@ -146,7 +140,7 @@ local o =
 				self:xy(width * 2 + width / 2 - 40, offy * 2):zoom(tzoom + 0.1):halign(1):maxwidth(width / 2 / tzoom)
 			end,
 			PackTableRefreshCommand = function(self)
-				self:settext("Download All")
+				self:settext(translated_info["DownloadAll"])
 			end,
 			MouseLeftClickMessageCommand = function(self)
 				if isOver(self) then
@@ -178,7 +172,7 @@ local o =
 	LoadFont("Common normal") ..
 		{
 			InitCommand = function(self)
-				self:y(offy + 16):zoom(tzoom + 0.1):halign(0.5):maxwidth(width / 2 / tzoom):settext("Return to search")
+				self:y(offy + 16):zoom(tzoom + 0.1):halign(0.5):maxwidth(width / 2 / tzoom):settext(translated_info["GoBack"])
 			end
 		}
 }
@@ -212,6 +206,7 @@ local function makedoots(i)
 			MouseLeftClickMessageCommand = function(self)
 				if isOver(self) then
 					packlist:SetFromCoreBundle(minidoots[i]:lower())
+					packtable = packlist:GetPackTable()
 					self:GetParent():GetParent():queuecommand("PackTableRefresh") -- perhaps it would be best if the packlist broadcast instead - mina
 					self:GetParent():GetParent():visible(true):GetChild("PacklistDisplay"):visible(true)
 					ind = i
@@ -224,7 +219,7 @@ local function makedoots(i)
 					self:zoom(tzoom)
 				end,
 				OnCommand = function(self)
-					self:settext(minidoots[i]:gsub("-Expanded", " (expanded)"))
+					self:settext(minidoots[i]:gsub("-Expanded", " ("..translated_info["Expanded"]..")"))
 				end
 			},
 		LoadFont("Common normal") ..
@@ -234,7 +229,7 @@ local function makedoots(i)
 				end,
 				OnCommand = function(self)
 					local bundle = DLMAN:GetCoreBundle(minidoots[i]:lower())
-					self:settextf("(%dMB)", bundle["TotalSize"])
+					self:settextf("(%d%s)", bundle["TotalSize"], translated_info["MB"])
 				end
 			}
 	}

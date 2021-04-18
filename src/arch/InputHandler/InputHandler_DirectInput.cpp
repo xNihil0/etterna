@@ -1,18 +1,18 @@
-﻿#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "archutils/Win32/AppInstance.h"
 #include "archutils/Win32/DirectXHelpers.h"
 #include "archutils/Win32/ErrorStrings.h"
 #include "archutils/Win32/GraphicsWindow.h"
 #include "archutils/Win32/RegistryAccess.h"
-#include "Foreach.h"
-#include "GamePreferences.h" //needed for Axis Fix
-#include "InputFilter.h"
+#include "Etterna/Models/Misc/GamePreferences.h" //needed for Axis Fix
+#include "Etterna/Singletons/InputFilter.h"
 #include "InputHandler_DirectInput.h"
 #include "InputHandler_DirectInputHelper.h"
-#include "PrefsManager.h"
-#include "RageLog.h"
-#include "RageTimer.h"
-#include "RageUtil.h"
+#include "Etterna/Singletons/PrefsManager.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Utils/RageUtil.h"
+
+#include <algorithm>
 
 REGISTER_INPUT_HANDLER_CLASS2(DirectInput, DInput);
 
@@ -20,17 +20,22 @@ static vector<DIDevice> Devices;
 
 // Number of joysticks found:
 static int g_iNumJoysticks;
+static bool g_forceJoystickPolling = false;
+void
+DInput_ForceJoystickPollingInNextDevicesChangedCall()
+{
+	g_forceJoystickPolling = true;
+}
 
 static BOOL CALLBACK
 EnumDevicesCallback(const DIDEVICEINSTANCE* pdidInstance, void* pContext)
 {
 	DIDevice device;
 
-	LOG->Info("DInput: Enumerating device - Type: 0x%08X Instance Name: \"%s\" "
-			  "Product Name: \"%s\"",
-			  pdidInstance->dwDevType,
-			  pdidInstance->tszInstanceName,
-			  pdidInstance->tszProductName);
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->info("DInput: Enumerating device - Type: 0x%08X Instance Name: \"{}\" "
+		  "Product Name: \"{}\"",
+		  pdidInstance->dwDevType, pdidInstance->tszInstanceName, pdidInstance->tszProductName);
 
 	switch (GET_DIDEVICE_TYPE(pdidInstance->dwDevType)) {
 		case DI8DEVTYPE_JOYSTICK:
@@ -53,7 +58,7 @@ EnumDevicesCallback(const DIDEVICEINSTANCE* pdidInstance, void* pContext)
 			device.type = device.MOUSE;
 			break;
 		default:
-			LOG->Info("DInput: Unrecognized device ignored.");
+			Locator::getLogger()->info("DInput: Unrecognized device ignored.");
 			return DIENUM_CONTINUE;
 	}
 
@@ -91,7 +96,7 @@ CheckForDirectInputDebugMode()
 		  "emulation",
 		  iVal)) {
 		if (iVal & 0x8)
-			LOG->Warn("DirectInput keyboard debug mode appears to be enabled. "
+			Locator::getLogger()->warn("DirectInput keyboard debug mode appears to be enabled. "
 					  "This reduces\n"
 					  "input timing accuracy significantly. Disabling this is "
 					  "strongly recommended.");
@@ -124,14 +129,15 @@ GetNumJoysticksSlow()
 	HRESULT hr = g_dinput->EnumDevices(
 	  DI8DEVCLASS_GAMECTRL, CountDevicesCallback, &iCount, DIEDFL_ATTACHEDONLY);
 	if (hr != DI_OK) {
-		LOG->Warn(hr_ssprintf(hr, "g_dinput->EnumDevices"));
+		Locator::getLogger()->warn(hr_ssprintf(hr, "g_dinput->EnumDevices"));
 	}
 	return iCount;
 }
 
 InputHandler_DInput::InputHandler_DInput()
 {
-	LOG->Trace("InputHandler_DInput::InputHandler_DInput()");
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->trace("InputHandler_DInput::InputHandler_DInput()");
 
 	CheckForDirectInputDebugMode();
 
@@ -143,35 +149,38 @@ InputHandler_DInput::InputHandler_DInput()
 									DIRECTINPUT_VERSION,
 									IID_IDirectInput8,
 									(LPVOID*)&g_dinput,
-									NULL);
+									nullptr);
 	if (hr != DI_OK)
 		RageException::Throw(
-		  hr_ssprintf(hr, "InputHandler_DInput: DirectInputCreate"));
+		  hr_ssprintf(hr, "InputHandler_DInput: DirectInputCreate").c_str());
 
-	LOG->Trace(
-	  "InputHandler_DInput: IDirectInput::EnumDevices(DIDEVTYPE_KEYBOARD)");
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->trace("InputHandler_DInput: IDirectInput::EnumDevices(DIDEVTYPE_KEYBOARD)");
 	hr = g_dinput->EnumDevices(
-	  DI8DEVCLASS_KEYBOARD, EnumDevicesCallback, NULL, DIEDFL_ATTACHEDONLY);
+	  DI8DEVCLASS_KEYBOARD, EnumDevicesCallback, nullptr, DIEDFL_ATTACHEDONLY);
 	if (hr != DI_OK)
 		RageException::Throw(
-		  hr_ssprintf(hr, "InputHandler_DInput: IDirectInput::EnumDevices"));
+		  hr_ssprintf(hr, "InputHandler_DInput: IDirectInput::EnumDevices")
+			.c_str());
 
-	LOG->Trace(
-	  "InputHandler_DInput: IDirectInput::EnumDevices(DIDEVTYPE_JOYSTICK)");
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->trace("InputHandler_DInput: IDirectInput::EnumDevices(DIDEVTYPE_JOYSTICK)");
 	hr = g_dinput->EnumDevices(
-	  DI8DEVCLASS_GAMECTRL, EnumDevicesCallback, NULL, DIEDFL_ATTACHEDONLY);
+	  DI8DEVCLASS_GAMECTRL, EnumDevicesCallback, nullptr, DIEDFL_ATTACHEDONLY);
 	if (hr != DI_OK)
 		RageException::Throw(
-		  hr_ssprintf(hr, "InputHandler_DInput: IDirectInput::EnumDevices"));
+		  hr_ssprintf(hr, "InputHandler_DInput: IDirectInput::EnumDevices")
+			.c_str());
 
 	// mouse
-	LOG->Trace(
-	  "InputHandler_DInput: IDirectInput::EnumDevices(DIDEVTYPE_MOUSE)");
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->trace("InputHandler_DInput: IDirectInput::EnumDevices(DIDEVTYPE_MOUSE)");
 	hr = g_dinput->EnumDevices(
-	  DI8DEVCLASS_POINTER, EnumDevicesCallback, NULL, DIEDFL_ATTACHEDONLY);
+	  DI8DEVCLASS_POINTER, EnumDevicesCallback, nullptr, DIEDFL_ATTACHEDONLY);
 	if (hr != DI_OK)
 		RageException::Throw(
-		  hr_ssprintf(hr, "InputHandler_DInput: IDirectInput::EnumDevices"));
+		  hr_ssprintf(hr, "InputHandler_DInput: IDirectInput::EnumDevices")
+			.c_str());
 
 	for (unsigned i = 0; i < Devices.size(); ++i) {
 		if (Devices[i].Open())
@@ -182,15 +191,13 @@ InputHandler_DInput::InputHandler_DInput()
 		continue;
 	}
 
-	LOG->Info("Found %u DirectInput devices:", Devices.size());
+	if (PREFSMAN->m_verbose_log > 1)
+		Locator::getLogger()->info("Found {} DirectInput devices:", Devices.size());
 	for (unsigned i = 0; i < Devices.size(); ++i) {
-		LOG->Info("   %d: '%s' axes: %d, hats: %d, buttons: %d (%s)",
-				  i,
-				  Devices[i].m_sName.c_str(),
-				  Devices[i].axes,
-				  Devices[i].hats,
-				  Devices[i].buttons,
-				  Devices[i].buffered ? "buffered" : "unbuffered");
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->info("   {}: '{}' axes: {}, hats: {}, buttons: {} ({})",
+					  i, Devices[i].m_sName.c_str(), Devices[i].axes, Devices[i].hats,
+					  Devices[i].buttons, Devices[i].buffered ? "buffered" : "unbuffered");
 	}
 
 	m_iLastSeenNumHidDevices = GetNumHidDevices();
@@ -215,9 +222,11 @@ InputHandler_DInput::ShutdownThread()
 {
 	m_bShutdown = true;
 	if (m_InputThread.IsCreated()) {
-		LOG->Trace("Shutting down DirectInput thread ...");
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->trace("Shutting down DirectInput thread ...");
 		m_InputThread.Wait();
-		LOG->Trace("DirectInput thread shut down.");
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->trace("DirectInput thread shut down.");
 	}
 	m_bShutdown = false;
 }
@@ -231,7 +240,7 @@ InputHandler_DInput::~InputHandler_DInput()
 
 	Devices.clear();
 	g_dinput->Release();
-	g_dinput = NULL;
+	g_dinput = nullptr;
 }
 
 void
@@ -266,10 +275,10 @@ InputHandler_DInput::WindowReset()
 static int
 TranslatePOV(DWORD value)
 {
-	const int HAT_VALS[] = { HAT_UP_MASK,	HAT_UP_MASK | HAT_RIGHT_MASK,
+	const int HAT_VALS[] = { HAT_UP_MASK,	 HAT_UP_MASK | HAT_RIGHT_MASK,
 							 HAT_RIGHT_MASK, HAT_DOWN_MASK | HAT_RIGHT_MASK,
-							 HAT_DOWN_MASK,  HAT_DOWN_MASK | HAT_LEFT_MASK,
-							 HAT_LEFT_MASK,  HAT_UP_MASK | HAT_LEFT_MASK };
+							 HAT_DOWN_MASK,	 HAT_DOWN_MASK | HAT_LEFT_MASK,
+							 HAT_LEFT_MASK,	 HAT_UP_MASK | HAT_LEFT_MASK };
 
 	if (LOWORD(value) == 0xFFFF)
 		return 0;
@@ -292,7 +301,7 @@ GetDeviceState(LPDIRECTINPUTDEVICE8 dev, int size, void* ptr)
 	if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
 		hr = dev->Acquire();
 		if (hr != DI_OK) {
-			LOG->Trace(hr_ssprintf(hr, "?"));
+			Locator::getLogger()->trace(hr_ssprintf(hr, "?"));
 			return hr;
 		}
 
@@ -320,9 +329,7 @@ InputHandler_DInput::UpdatePolled(
 				return;
 
 			if (hr != DI_OK) {
-				LOG->MapLog(
-				  "UpdatePolled",
-				  hr_ssprintf(hr, "Failures on polled keyboard update"));
+                Locator::getLogger()->debug(hr_ssprintf(hr, "Failures on polled keyboard update"));
 				return;
 			}
 
@@ -391,19 +398,16 @@ InputHandler_DInput::UpdatePolled(
 							pos = JOY_AUX_4;
 							val = state.rglSlider[1];
 						} else
-							LOG->MapLog("unknown input",
-										"Controller '%s' is returning an "
-										"unknown joystick offset, %i",
-										device.m_sName.c_str(),
-										in.ofs);
+							Locator::getLogger()->warn("Controller '{}' is returning an unknown joystick offset, {}",
+										device.m_sName.c_str(), in.ofs);
 
 						if (neg != DeviceButton_Invalid) {
 							float l = SCALE(
 							  static_cast<int>(val), 0.0f, 100.0f, 0.0f, 1.0f);
 							ButtonPressed(
-							  DeviceInput(dev, neg, max(-l, 0), tm));
+							  DeviceInput(dev, neg, std::max(-l, 0.F), tm));
 							ButtonPressed(
-							  DeviceInput(dev, pos, max(+l, 0), tm));
+							  DeviceInput(dev, pos, std::max(+l, 0.F), tm));
 						}
 
 						break;
@@ -455,9 +459,6 @@ InputHandler_DInput::UpdatePolled(
 						INPUTFILTER->UpdateCursorLocation(
 						  static_cast<float>(cursorPos.x),
 						  static_cast<float>(cursorPos.y));
-						INPUTFILTER->UpdateCursorLocation(
-						  static_cast<float>(cursorPos.x),
-						  static_cast<float>(cursorPos.y));
 
 						DeviceInput di(
 						  dev,
@@ -483,7 +484,7 @@ InputHandler_DInput::UpdatePolled(
 							neg = MOUSE_WHEELDOWN;
 							pos = MOUSE_WHEELUP;
 							val = state.lZ;
-							// LOG->Trace("MouseWheel polled: %i",val);
+							// Locator::getLogger()->trace("MouseWheel polled: %i",val);
 							INPUTFILTER->UpdateMouseWheel(
 							  static_cast<float>(val));
 							if (val == 0) {
@@ -500,11 +501,8 @@ InputHandler_DInput::UpdatePolled(
 								ButtonPressed(DeviceInput(dev, pos, 0, tm));
 							}
 						} else
-							LOG->MapLog("unknown input",
-										"Mouse '%s' is returning an unknown "
-										"mouse offset, %i",
-										device.m_sName.c_str(),
-										in.ofs);
+							Locator::getLogger()->warn("Mouse '{}' is returning an unknown mouse offset, {}",
+										device.m_sName.c_str(), in.ofs);
 						break;
 					}
 				}
@@ -530,8 +528,7 @@ InputHandler_DInput::UpdateBuffered(
 	}
 
 	if (hr != DI_OK) {
-		LOG->Trace(
-		  hr_ssprintf(hr, "UpdateBuffered: IDirectInputDevice2_GetDeviceData"));
+		Locator::getLogger()->trace(hr_ssprintf(hr, "UpdateBuffered: IDirectInputDevice2_GetDeviceData"));
 		return;
 	}
 
@@ -573,9 +570,6 @@ InputHandler_DInput::UpdateBuffered(
 						INPUTFILTER->UpdateCursorLocation(
 						  static_cast<float>(cursorPos.x),
 						  static_cast<float>(cursorPos.y));
-						INPUTFILTER->UpdateCursorLocation(
-						  static_cast<float>(cursorPos.x),
-						  static_cast<float>(cursorPos.y));
 
 						DeviceButton mouseInput = DeviceButton_Invalid;
 
@@ -586,11 +580,8 @@ InputHandler_DInput::UpdateBuffered(
 						else if (in.ofs == DIMOFS_BUTTON2)
 							mouseInput = MOUSE_MIDDLE;
 						else
-							LOG->MapLog("unknown input",
-										"Mouse '%s' is returning an unknown "
-										"mouse offset [button], %i",
-										device.m_sName.c_str(),
-										in.ofs);
+							Locator::getLogger()->warn("Mouse '{}' is returning an unknown mouse offset [button], {}",
+										device.m_sName.c_str(),in.ofs);
 						ButtonPressed(
 						  DeviceInput(dev, mouseInput, !!evtbuf[i].dwData, tm));
 					} else
@@ -676,11 +667,8 @@ InputHandler_DInput::UpdateBuffered(
 								}
 							}
 						} else
-							LOG->MapLog("unknown input",
-										"Mouse '%s' is returning an unknown "
-										"mouse offset [axis], %i",
-										device.m_sName.c_str(),
-										in.ofs);
+							Locator::getLogger()->warn("Mouse '{}' is returning an unknown mouse offset [axis], {}",
+										device.m_sName.c_str(), in.ofs);
 					} else {
 						// joystick
 						if (in.ofs == DIJOFS_X) {
@@ -708,11 +696,8 @@ InputHandler_DInput::UpdateBuffered(
 							up = JOY_AUX_3;
 							down = JOY_AUX_4;
 						} else
-							LOG->MapLog("unknown input",
-										"Controller '%s' is returning an "
-										"unknown joystick offset, %i",
-										device.m_sName.c_str(),
-										in.ofs);
+							Locator::getLogger()->warn("Controller '{}' is returning an unknown joystick offset, {}",
+										device.m_sName.c_str(), in.ofs);
 
 						float l = SCALE(static_cast<int>(evtbuf[i].dwData),
 										0.0f,
@@ -726,9 +711,10 @@ InputHandler_DInput::UpdateBuffered(
 							  DeviceInput(dev, down, (l == 0) || (l == 1), tm));
 
 						} else {
-							ButtonPressed(DeviceInput(dev, up, max(-l, 0), tm));
 							ButtonPressed(
-							  DeviceInput(dev, down, max(+l, 0), tm));
+							  DeviceInput(dev, up, std::max(-l, 0.F), tm));
+							ButtonPressed(
+							  DeviceInput(dev, down, std::max(+l, 0.F), tm));
 						}
 					}
 					break;
@@ -793,50 +779,28 @@ InputHandler_DInput::Update()
 	InputHandler::UpdateTimer();
 }
 
-const float POLL_FOR_JOYSTICK_CHANGES_LENGTH_SECONDS = 15.0f;
-const float POLL_FOR_JOYSTICK_CHANGES_EVERY_SECONDS = 0.25f;
-
 bool
 InputHandler_DInput::DevicesChanged()
 {
-	/* GetNumJoysticksSlow() blocks DirectInput for a while even if called from
-	 * a different thread, so we can't poll with it. GetNumHidDevices() is fast,
-	 * but sometimes the DirectInput joysticks haven't updated by  the time the
-	 * HID registry value changes. So, poll using GetNumHidDevices(). When that
-	 * changes, poll using GetNumJoysticksSlow() for a little while to give
-	 * DirectInput time to catch up. On this XP machine (which? -aj), it takes
-	 * 2-10 DirectInput polls (0.5-2.5 seconds) to catch a newly installed
-	 * device after the registry value changes, and catches non-new
-	 * plugged/unplugged devices on the first DirectInputPoll. Note that this
-	 * "poll for N seconds" method will not work if the Add New Hardware wizard
-	 * halts device installation to wait for a driver. Most of the joysticks
-	 * people would want to use don't prompt for a driver though, and the wizard
-	 * adds them pretty quickly. */
+	/* Basically, check if devices are changed, especially joysticks.
+	This should only be called when appropriate (when Windows says devices
+	changed) The reason we don't just keep polling is because that's slow.
+	GetNumHidDevices() should be fast enough to not be slow, then just use logic
+	and modern magic.
+	*/
 
 	int iOldNumHidDevices = m_iLastSeenNumHidDevices;
 	m_iLastSeenNumHidDevices = GetNumHidDevices();
-	if (iOldNumHidDevices != m_iLastSeenNumHidDevices) {
-		LOG->Warn("HID devices changes");
-		m_iNumTimesLeftToPollForJoysticksChanged =
-		  static_cast<int>(POLL_FOR_JOYSTICK_CHANGES_LENGTH_SECONDS /
-						   POLL_FOR_JOYSTICK_CHANGES_EVERY_SECONDS);
-	}
-
-	if (m_iNumTimesLeftToPollForJoysticksChanged > 0) {
-		static RageTimer timerPollJoysticks;
-		if (timerPollJoysticks.Ago() >=
-			POLL_FOR_JOYSTICK_CHANGES_EVERY_SECONDS) {
-			m_iNumTimesLeftToPollForJoysticksChanged--;
-			timerPollJoysticks.Touch();
-			LOG->Warn("polling for joystick changes");
-
-			int iOldNumJoysticks = m_iLastSeenNumJoysticks;
-			m_iLastSeenNumJoysticks = GetNumJoysticksSlow();
-			if (iOldNumJoysticks != m_iLastSeenNumJoysticks) {
-				LOG->Warn("joysticks changed");
-				m_iNumTimesLeftToPollForJoysticksChanged = 0;
-				return true;
-			}
+	if (iOldNumHidDevices != m_iLastSeenNumHidDevices ||
+		g_forceJoystickPolling) {
+		g_forceJoystickPolling = false;
+		Locator::getLogger()->warn("Caught HID Changes. Checking for Joystick Changes.");
+		int iOldNumJoysticks = m_iLastSeenNumJoysticks;
+		m_iLastSeenNumJoysticks = GetNumJoysticksSlow();
+		if (iOldNumJoysticks != m_iLastSeenNumJoysticks) {
+			Locator::getLogger()->warn("Caught Joystick Changes.");
+			m_iNumTimesLeftToPollForJoysticksChanged = 0;
+			return true;
 		}
 	}
 
@@ -847,14 +811,13 @@ void
 InputHandler_DInput::InputThreadMain()
 {
 	if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST))
-		LOG->Warn(werr_ssprintf(GetLastError(),
-								"Failed to set DirectInput thread priority"));
+		Locator::getLogger()->warn(werr_ssprintf(GetLastError(), "Failed to set DirectInput thread priority"));
 
 	// Enable priority boosting.
 	SetThreadPriorityBoost(GetCurrentThread(), FALSE);
 
 	vector<DIDevice*> BufferedDevices;
-	HANDLE Handle = CreateEvent(NULL, FALSE, FALSE, NULL);
+	HANDLE Handle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 	for (unsigned i = 0; i < Devices.size(); ++i) {
 		if (!Devices[i].buffered)
 			continue;
@@ -864,21 +827,18 @@ InputHandler_DInput::InputThreadMain()
 		Devices[i].Device->Unacquire();
 		HRESULT hr = Devices[i].Device->SetEventNotification(Handle);
 		if (FAILED(hr))
-			LOG->Warn("IDirectInputDevice2_SetEventNotification failed on %i",
-					  i);
+			Locator::getLogger()->warn("IDirectInputDevice2_SetEventNotification failed on {}", i);
 		Devices[i].Device->Acquire();
 	}
 
 	while (!m_bShutdown) {
-		CHECKPOINT;
 		if (BufferedDevices.size()) {
 			// Update buffered devices.
 			PollAndAcquireDevices(true);
 
 			int ret = WaitForSingleObjectEx(Handle, 50, true);
 			if (ret == -1) {
-				LOG->Trace(werr_ssprintf(GetLastError(),
-										 "WaitForSingleObjectEx failed"));
+				Locator::getLogger()->trace(werr_ssprintf(GetLastError(), "WaitForSingleObjectEx failed"));
 				continue;
 			}
 
@@ -888,22 +848,19 @@ InputHandler_DInput::InputThreadMain()
 			for (unsigned i = 0; i < BufferedDevices.size(); ++i)
 				UpdateBuffered(*BufferedDevices[i], now);
 		}
-		CHECKPOINT;
 
 		// If we have no buffered devices, we didn't delay at
 		// WaitForMultipleObjectsEx.
 		if (BufferedDevices.size() == 0)
 			usleep(50000);
-		CHECKPOINT;
 	}
-	CHECKPOINT;
 
 	for (unsigned i = 0; i < Devices.size(); ++i) {
 		if (!Devices[i].buffered)
 			continue;
 
 		Devices[i].Device->Unacquire();
-		Devices[i].Device->SetEventNotification(NULL);
+		Devices[i].Device->SetEventNotification(nullptr);
 	}
 
 	CloseHandle(Handle);
@@ -944,7 +901,7 @@ ScancodeAndKeysToChar(DWORD scancode, unsigned char keys[256])
 	unsigned short result[2]; // ToAscii writes a max of 2 chars
 	ZERO(result);
 
-	if (pToUnicodeEx != NULL) {
+	if (pToUnicodeEx != nullptr) {
 		int iNum =
 		  pToUnicodeEx(vk, scancode, keys, (LPWSTR)result, 2, 0, layout);
 		if (iNum == 1)
@@ -953,7 +910,7 @@ ScancodeAndKeysToChar(DWORD scancode, unsigned char keys[256])
 		int iNum = ToAsciiEx(vk, scancode, keys, result, 0, layout);
 		// iNum == 2 will happen only for dead keys. See MSDN for ToAsciiEx.
 		if (iNum == 1) {
-			RString s = RString() + (char)result[0];
+			std::string s = std::string() + (char)result[0];
 			return ConvertCodepageToWString(s, CP_ACP)[0];
 		}
 	}
@@ -975,14 +932,12 @@ InputHandler_DInput::DeviceButtonToChar(DeviceButton button,
 			return '\0';
 	}
 
-	FOREACH_CONST(DIDevice, Devices, d)
-	{
-		if (d->type != DIDevice::KEYBOARD)
+	for (auto& d : Devices) {
+		if (d.type != DIDevice::KEYBOARD)
 			continue;
 
-		FOREACH_CONST(input_t, d->Inputs, i)
-		{
-			if (button != i->num)
+		for (auto& i : d.Inputs) {
+			if (button != i.num)
 				continue;
 
 			unsigned char keys[256];
@@ -990,7 +945,7 @@ InputHandler_DInput::DeviceButtonToChar(DeviceButton button,
 			if (bUseCurrentKeyModifiers)
 				GetKeyboardState(keys);
 			// todo: handle Caps Lock -freem
-			wchar_t c = ScancodeAndKeysToChar(i->ofs, keys);
+			wchar_t c = ScancodeAndKeysToChar(i.ofs, keys);
 			if (c)
 				return c;
 		}

@@ -86,6 +86,41 @@ function ReceptorSize()
 	return t
 end
 
+local ErrorBarCountChoices = {}
+for i = 1, 200 do
+	ErrorBarCountChoices[i] = tostring(i)
+end
+function ErrorBarCount()
+	local t = {
+		Name = "ErrorBarCount",
+		LayoutType = "ShowAllInRow",
+		SelectType = "SelectOne",
+		OneChoiceForAllPlayers = false,
+		ExportOnChange = true,
+		Choices = ErrorBarCountChoices,
+		LoadSelections = function(self, list, pn)
+			local prefs = playerConfig:get_data(pn_to_profile_slot(pn)).ErrorBarCount
+			list[prefs] = true
+		end,
+		SaveSelections = function(self, list, pn)
+			local found = false
+			for i = 1, #list do
+				if not found then
+					if list[i] == true then
+						local value = i
+						playerConfig:get_data(pn_to_profile_slot(pn)).ErrorBarCount = value
+						found = true
+					end
+				end
+			end
+			playerConfig:set_dirty(pn_to_profile_slot(pn))
+			playerConfig:save(pn_to_profile_slot(pn))
+		end
+	}
+	setmetatable(t, t)
+	return t
+end
+
 function JudgmentText()
 	local t = {
 		Name = "JudgmentText",
@@ -93,7 +128,7 @@ function JudgmentText()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Hide"), "Show"},
+		Choices = {THEME:GetString("OptionNames", "Hide"), THEME:GetString("OptionNames", "Show")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).JudgmentText
 			if pref then
@@ -114,6 +149,34 @@ function JudgmentText()
 	return t
 end
 
+function ComboText()
+	local t = {
+		Name = "ComboText",
+		LayoutType = "ShowAllInRow",
+		SelectType = "SelectOne",
+		OneChoiceForAllPlayers = false,
+		ExportOnChange = true,
+		Choices = {THEME:GetString("OptionNames", "Hide"), THEME:GetString("OptionNames", "Show")},
+		LoadSelections = function(self, list, pn)
+			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).ComboText
+			if pref then
+				list[2] = true
+			else
+				list[1] = true
+			end
+		end,
+		SaveSelections = function(self, list, pn)
+			local value
+			value = list[2]
+			playerConfig:get_data(pn_to_profile_slot(pn)).ComboText = value
+			playerConfig:set_dirty(pn_to_profile_slot(pn))
+			playerConfig:save(pn_to_profile_slot(pn))
+		end
+	}
+	setmetatable(t, t)
+	return t
+end
+
 function DisplayPercent()
 	local t = {
 		Name = "DisplayPercent",
@@ -121,7 +184,7 @@ function DisplayPercent()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).DisplayPercent
 			if pref then
@@ -149,7 +212,7 @@ function TargetTracker()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).TargetTracker
 			if pref then
@@ -174,11 +237,20 @@ local tChoices = {}
 for i = 1, 99 do
 	tChoices[i] = tostring(i) .. "%"
 end
-for i = 1, 3 do
-	tChoices[99 + i] = tostring(99 + i * 0.25) .. "%"
-end
-for i = 1, 4 do
-	tChoices[#tChoices + 1] = tostring(99.96 + i * 0.01) .. "%"
+local tChoices2 = {
+	"99.50%",
+	"99.60%",
+	"99.70%", -- AAA
+	"99.80%", -- AAA.
+	"99.90%", -- AAA:
+	"99.955%", -- AAAA
+	"99.97%", -- AAAA.
+	"99.98%", -- AAAA:
+	"99.9935%", -- AAAAA
+	"100%" -- impossible
+}
+for _,v in ipairs(tChoices2) do
+	tChoices[#tChoices+1] = v
 end
 function TargetGoal()
 	local t = {
@@ -220,7 +292,7 @@ function TargetTrackerMode()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {"Set Percent", "Personal Best"},
+		Choices = {THEME:GetString("OptionNames", "SetPercent"), THEME:GetString("OptionNames", "PersonalBest")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).TargetTrackerMode
 			list[pref + 1] = true
@@ -248,7 +320,7 @@ function JudgeCounter()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).JudgeCounter
 			if pref then
@@ -276,7 +348,7 @@ function PlayerInfo()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).PlayerInfo
 			if pref then
@@ -297,6 +369,32 @@ function PlayerInfo()
 	return t
 end
 
+function CBHighlight()
+	local t = {
+		Name = "CBHighlight",
+		LayoutType = "ShowAllInRow",
+		SelectType = "SelectOne",
+		OneChoiceForAllPlayers = false,
+		ExportOnChange = true,
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
+		LoadSelections = function(self, list, pn)
+			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).CBHighlight
+			if pref then
+				list[2] = true
+			else
+				list[1] = true
+			end
+		end,
+		SaveSelections = function(self, list, pn)
+			playerConfig:get_data(pn_to_profile_slot(pn)).CBHighlight = list[2]
+			playerConfig:set_dirty(pn_to_profile_slot(pn))
+			playerConfig:save(pn_to_profile_slot(pn))
+		end
+	}
+	setmetatable(t, t)
+	return t
+end
+
 function CustomizeGameplay()
 	local t = {
 		Name = "CustomizeGameplay",
@@ -304,7 +402,7 @@ function CustomizeGameplay()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).CustomizeGameplay
 			if pref then
@@ -330,7 +428,7 @@ function CustomEvalWindows()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).CustomEvaluationWindowTimings
 			if pref then
@@ -358,7 +456,7 @@ function ErrorBar()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On", "EWMA"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On"), THEME:GetString("OptionNames", "EWMA")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).ErrorBar
 			list[pref + 1] = true
@@ -381,6 +479,34 @@ function ErrorBar()
 	return t
 end
 
+function LeaderBoard()
+	local t = {
+		Name = "Leaderboard",
+		LayoutType = "ShowAllInRow",
+		SelectType = "SelectOne",
+		OneChoiceForAllPlayers = false,
+		ExportOnChange = true,
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
+		LoadSelections = function(self, list, pn)
+			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).leaderboardEnabled
+			if pref then
+				list[2] = true
+			else
+				list[1] = true
+			end
+		end,
+		SaveSelections = function(self, list, pn)
+			local value
+			value = list[2]
+			playerConfig:get_data(pn_to_profile_slot(pn)).leaderboardEnabled = value
+			playerConfig:set_dirty(pn_to_profile_slot(pn))
+			playerConfig:save(pn_to_profile_slot(pn))
+		end
+	}
+	setmetatable(t, t)
+	return t
+end
+
 function FullProgressBar()
 	local t = {
 		Name = "FullProgressBar",
@@ -388,7 +514,7 @@ function FullProgressBar()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).FullProgressBar
 			if pref then
@@ -416,7 +542,7 @@ function MiniProgressBar()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).MiniProgressBar
 			if pref then
@@ -444,7 +570,11 @@ function LaneCover()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {THEME:GetString("OptionNames", "Off"), "Sudden", "Hidden"},
+		Choices = {
+			THEME:GetString("OptionNames", "Off"),
+			THEME:GetString("OptionNames", "Sudden"), 
+			THEME:GetString("OptionNames", "Hidden")
+		},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).LaneCover
 			list[pref + 1] = true
@@ -474,7 +604,7 @@ function NPSDisplay()
 		SelectType = "SelectMultiple",
 		OneChoiceForAllPlayers = false,
 		ExportOnChange = true,
-		Choices = {"NPS Display", "NPS Graph"},
+		Choices = {THEME:GetString("OptionNames", "NPSDisplay"), THEME:GetString("OptionNames", "NPSGraph")},
 		LoadSelections = function(self, list, pn)
 			local npsDisplay = playerConfig:get_data(pn_to_profile_slot(pn)).NPSDisplay
 			local npsGraph = playerConfig:get_data(pn_to_profile_slot(pn)).NPSGraph
@@ -503,7 +633,11 @@ function BackgroundType()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Default", "Static Background", "Random Background"},
+		Choices = {
+			THEME:GetString("OptionNames", "Default"),
+			THEME:GetString("OptionNames", "StaticBG"), 
+			THEME:GetString("OptionNames", "RandomBG")
+		},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).BackgroundType
 			list[pref] = true
@@ -577,7 +711,11 @@ function TipType()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "Tips", "Random Phrases"},
+		Choices = {
+			THEME:GetString("OptionNames", "Off"),
+			THEME:GetString("OptionNames", "Tips"),
+			THEME:GetString("OptionNames", "RandomPhrases")
+		},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.TipType
 			if pref == 1 then
@@ -613,7 +751,7 @@ function SongBGEnabled()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.SongBGEnabled
 			if pref then
@@ -645,7 +783,7 @@ function SongBGMouseEnabled()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.SongBGMouseEnabled
 			if pref then
@@ -677,7 +815,11 @@ function EvalBGType()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Song Background", "Clear+Grade Background", "Grade Background only"},
+		Choices = {
+			THEME:GetString("OptionNames", "SongBackground"),
+			THEME:GetString("OptionNames", "ClearGradeBackground"),
+			THEME:GetString("OptionNames", "GradeBackground")
+		},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().eval.SongBGType
 			if pref == 1 then
@@ -713,7 +855,7 @@ function Particles()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.Particles
 			if pref then
@@ -745,7 +887,7 @@ function RateSort()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.RateSort
 			if pref then
@@ -777,7 +919,7 @@ function HelpMenu()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.HelpMenu
 			if pref then
@@ -809,7 +951,7 @@ function MeasureLines()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Off", "On"},
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
 		LoadSelections = function(self, list, pn)
 			local pref = themeConfig:get_data().global.MeasureLines
 			if pref then
@@ -835,6 +977,70 @@ function MeasureLines()
 	return t
 end
 
+function ShowVisualizer()
+	local t = {
+		Name = "ShowVisualizer",
+		LayoutType = "ShowAllInRow",
+		SelectType = "SelectOne",
+		OneChoiceForAllPlayers = true,
+		ExportOnChange = true,
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
+		LoadSelections = function(self, list, pn)
+			local pref = themeConfig:get_data().global.ShowVisualizer
+			if pref then
+				list[2] = true
+			else
+				list[1] = true
+			end
+		end,
+		SaveSelections = function(self, list, pn)
+			local value
+			if list[1] then
+				value = false
+			else
+				value = true
+			end
+			themeConfig:get_data().global.ShowVisualizer = value
+			themeConfig:set_dirty()
+			themeConfig:save()
+		end
+	}
+	setmetatable(t, t)
+	return t
+end
+
+function InstantSearch()
+	local t = {
+		Name = "InstantSearch",
+		LayoutType = "ShowAllInRow",
+		SelectType = "SelectOne",
+		OneChoiceForAllPlayers = true,
+		ExportOnChange = true,
+		Choices = {THEME:GetString("OptionNames", "Off"), THEME:GetString("OptionNames", "On")},
+		LoadSelections = function(self, list, pn)
+			local pref = themeConfig:get_data().global.InstantSearch
+			if pref then
+				list[2] = true
+			else
+				list[1] = true
+			end
+		end,
+		SaveSelections = function(self, list, pn)
+			local value
+			if list[1] then
+				value = false
+			else
+				value = true
+			end
+			themeConfig:get_data().global.InstantSearch = value
+			themeConfig:set_dirty()
+			themeConfig:save()
+		end
+	}
+	setmetatable(t, t)
+	return t
+end
+
 function ProgressBar()
 	local keymode = getCurrentKeyMode()
 	local t = {
@@ -843,7 +1049,7 @@ function ProgressBar()
 		SelectType = "SelectOne",
 		OneChoiceForAllPlayers = true,
 		ExportOnChange = true,
-		Choices = {"Bottom", "Top"},
+		Choices = {THEME:GetString("OptionNames", "Bottom"), THEME:GetString("OptionNames", "Top")},
 		LoadSelections = function(self, list, pn)
 			local pref = playerConfig:get_data(pn_to_profile_slot(pn)).GameplayXYCoordinates[keymode].ProgressBarPos
 			if pref then

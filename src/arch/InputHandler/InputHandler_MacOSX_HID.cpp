@@ -1,9 +1,9 @@
-#include "global.h"
-#include "RageLog.h"
+#include "Etterna/Globals/global.h"
+#include "Core/Services/Locator.hpp"
 #include "InputHandler_MacOSX_HID.h"
-#include "Foreach.h"
-#include "PrefsManager.h"
-#include "InputFilter.h"
+#include "Etterna/Models/Misc/Foreach.h"
+#include "Etterna/Singletons/PrefsManager.h"
+#include "Etterna/Singletons/InputFilter.h"
 #include "archutils/Darwin/DarwinThreadHelpers.h"
 #include "archutils/Darwin/KeyboardDevice.h"
 #include "archutils/Darwin/MouseDevice.h"
@@ -66,9 +66,9 @@ InputHandler_MacOSX_HID::Run(void* data)
 
 	This->StartDevices();
 	{
-		const RString sError = SetThreadPrecedence(1.0f);
+		const std::string sError = SetThreadPrecedence(1.0f);
 		if (!sError.empty())
-			LOG->Warn("Could not set precedence of the input thread: %s",
+			Locator::getLogger()->warn("Could not set precedence of the input thread: {}",
 					  sError.c_str());
 	}
 	// Add an observer for the start of the run loop
@@ -112,7 +112,7 @@ InputHandler_MacOSX_HID::Run(void* data)
 		  This->m_LoopRef, This->m_SourceRef, kCFRunLoopDefaultMode);
 	}
 	CFRunLoopRun();
-	LOG->Trace("Shutting down input handler thread...");
+	Locator::getLogger()->trace("Shutting down input handler thread...");
 	return 0;
 }
 
@@ -166,7 +166,7 @@ InputHandler_MacOSX_HID::~InputHandler_MacOSX_HID()
 		m_InputThread.Wait();
 		CFRelease(m_SourceRef);
 		CFRelease(m_LoopRef);
-		LOG->Trace("Input handler thread shut down.");
+		Locator::getLogger()->trace("Input handler thread shut down.");
 	}
 
 	FOREACH(io_iterator_t, m_vIters, i)
@@ -233,18 +233,18 @@ InputHandler_MacOSX_HID::AddDevices(int usagePage, int usage, InputDevice& id)
 
 	// Iterate over the devices and add them
 	while ((device = IOIteratorNext(iter))) {
-		LOG->Trace("\tFound device %d", id);
+		Locator::getLogger()->trace("\tFound device {}", id);
 		HIDDevice* dev = MakeDevice(id);
 		int num;
 
 		if (!dev) {
-			LOG->Trace("\t\tInvalid id, deleting device");
+			Locator::getLogger()->trace("\t\tInvalid id, deleting device");
 			IOObjectRelease(device);
 			continue;
 		}
 
 		if (!dev->Open(device) || (num = dev->AssignIDs(id)) == -1) {
-			LOG->Trace("\tFailed top open or assign id, deleting device");
+			Locator::getLogger()->trace("\tFailed top open or assign id, deleting device");
 			delete dev;
 			IOObjectRelease(device);
 			continue;
@@ -265,8 +265,7 @@ InputHandler_MacOSX_HID::AddDevices(int usagePage, int usage, InputDevice& id)
 		if (ret == KERN_SUCCESS)
 			m_vIters.push_back(i);
 		else
-			LOG->Trace(
-			  "\t\tFailed to add device changed notification, deleting device");
+			Locator::getLogger()->trace("\t\tFailed to add device changed notification, deleting device");
 		IOObjectRelease(device);
 	}
 }
@@ -281,19 +280,19 @@ InputHandler_MacOSX_HID::InputHandler_MacOSX_HID()
 	m_NotifyPort = IONotificationPortCreate(kIOMasterPortDefault);
 
 	// Add devices.
-	LOG->Trace("Finding keyboards");
+	Locator::getLogger()->trace("Finding keyboards");
 	AddDevices(kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard, id);
 
 	id = DEVICE_MOUSE;
 
-	LOG->Trace("Finding mice");
+	Locator::getLogger()->trace("Finding mice");
 	AddDevices(kHIDPage_GenericDesktop, kHIDUsage_GD_Mouse, id);
 
-	LOG->Trace("Finding joysticks");
+	Locator::getLogger()->trace("Finding joysticks");
 	id = DEVICE_JOY1;
 	AddDevices(kHIDPage_GenericDesktop, kHIDUsage_GD_Joystick, id);
 	AddDevices(kHIDPage_GenericDesktop, kHIDUsage_GD_GamePad, id);
-	LOG->Trace("Finding pump");
+	Locator::getLogger()->trace("Finding pump");
 	id = DEVICE_PUMP1;
 	AddDevices(kHIDPage_VendorDefinedStart,
 			   0x0001,
@@ -320,7 +319,7 @@ InputHandler_MacOSX_HID::GetDevicesAndDescriptions(
 	(*i)->GetDevicesAndDescriptions(vDevices);
 }
 
-RString
+std::string
 InputHandler_MacOSX_HID::GetDeviceSpecificInputString(const DeviceInput& di)
 {
 	if (di.device == DEVICE_KEYBOARD) {
@@ -481,59 +480,6 @@ InputHandler_MacOSX_HID::GetDeviceSpecificInputString(const DeviceInput& di)
 	return InputHandler::GetDeviceSpecificInputString(di);
 }
 
-// Modified from NESControllerInterface of Macifom project,
-// used under MIT license from
-// http://macifom.googlecode.com/svn-history/r89/Macifom/trunk/NESControllerInterface.m
-// Used under MIT license from
-// http://inquisitivecocoa.com/2009/04/05/key-code-translator/
-static wchar_t
-KeyCodeToChar(CGKeyCode keyCode, unsigned int modifierFlags)
-{
-	TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-	CFDataRef uchr = (CFDataRef)TISGetInputSourceProperty(
-	  currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
-	const UCKeyboardLayout* keyboardLayout =
-	  uchr ? (const UCKeyboardLayout*)CFDataGetBytePtr(uchr) : NULL;
-
-	if (keyboardLayout) {
-		UInt32 deadKeyState = 0;
-		UniCharCount maxStringLength = 255;
-		UniCharCount actualStringLength = 0;
-		UniChar unicodeString[maxStringLength];
-
-		OSStatus status = UCKeyTranslate(keyboardLayout,
-										 keyCode,
-										 kUCKeyActionDown,
-										 modifierFlags,
-										 LMGetKbdType(),
-										 0,
-										 &deadKeyState,
-										 maxStringLength,
-										 &actualStringLength,
-										 unicodeString);
-
-		if (status != noErr) {
-			fprintf(stderr,
-					"There was an %s error translating from the '%d' key code "
-					"to a human readable string: %s\n",
-					GetMacOSStatusErrorString(status),
-					(int)status,
-					GetMacOSStatusCommentString(status));
-		} else if (actualStringLength == 0) {
-			fprintf(stderr,
-					"Couldn't find a translation for the '%d' key code\n",
-					keyCode);
-		} else {
-			return unicodeString[0];
-		}
-	} else {
-		fprintf(stderr,
-				"Couldn't find a translation for the '%d' key code\n",
-				keyCode);
-	}
-	return 0;
-}
-
 wchar_t
 InputHandler_MacOSX_HID::DeviceButtonToChar(DeviceButton button,
 											bool bUseCurrentKeyModifiers)
@@ -571,18 +517,6 @@ InputHandler_MacOSX_HID::DeviceButtonToChar(DeviceButton button,
 		case KEY_NUMLOCK:
 		case KEY_KP_ENTER:
 			return L'\0';
-	}
-
-	// Use Text Input Source services to convert the key code to character code.
-	UInt8 iMacVirtualKey;
-	if (KeyboardDevice::DeviceButtonToMacVirtualKey(button, iMacVirtualKey)) {
-		UInt32 nModifiers =
-		  bUseCurrentKeyModifiers ? GetCurrentKeyModifiers() : 0;
-		wchar_t sCharCode = KeyCodeToChar(iMacVirtualKey, nModifiers);
-
-		if (sCharCode != 0) {
-			return ApplyKeyModifiers(sCharCode);
-		}
 	}
 
 	return InputHandler::DeviceButtonToChar(button, bUseCurrentKeyModifiers);

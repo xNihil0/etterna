@@ -1,42 +1,43 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "MovieTexture.h"
-#include "RageUtil.h"
-#include "RageLog.h"
-#include "MovieTexture_Null.h"
-#include "PrefsManager.h"
-#include "RageFile.h"
-#include "LocalizedString.h"
-#include "Foreach.h"
+#include "RageUtil/Utils/RageUtil.h"
+#include "Core/Services/Locator.hpp"
+#include "Etterna/Singletons/PrefsManager.h"
+#include "RageUtil/File/RageFile.h"
+#include "Etterna/Models/Misc/LocalizedString.h"
+#include "Etterna/Models/Misc/Foreach.h"
 #include "arch/arch_default.h"
 
 void
-ForceToAscii(RString& str)
+ForceToAscii(std::string& str)
 {
-	for (unsigned i = 0; i < str.size(); ++i)
-		if (str[i] < 0x20 || str[i] > 0x7E)
-			str[i] = '?';
+	for (char& i : str)
+		if (i < 0x20 || i > 0x7E)
+			i = '?';
 }
 
 bool
-RageMovieTexture::GetFourCC(const RString& fn, RString& handler, RString& type)
+RageMovieTexture::GetFourCC(const std::string& fn,
+							std::string& handler,
+							std::string& type)
 {
-	RString ignore, ext;
+	std::string ignore, ext;
 	splitpath(fn, ignore, ignore, ext);
-	if (!ext.CompareNoCase(".mpg") || !ext.CompareNoCase(".mpeg") ||
-		!ext.CompareNoCase(".mpv") || !ext.CompareNoCase(".mpe")) {
+	if (!CompareNoCase(ext, ".mpg") || !CompareNoCase(ext, ".mpeg") ||
+		!CompareNoCase(ext, ".mpv") || !CompareNoCase(ext, ".mpe")) {
 		handler = type = "MPEG";
 		return true;
 	}
-	if (!ext.CompareNoCase(".ogv")) {
+	if (!CompareNoCase(ext, ".ogv")) {
 		handler = type = "Ogg";
 		return true;
 	}
 
-		// Not very pretty but should do all the same error checking without
-		// iostream
+	// Not very pretty but should do all the same error checking without
+	// iostream
 #define HANDLE_ERROR(x)                                                        \
 	{                                                                          \
-		LOG->Warn("Error reading %s: %s", fn.c_str(), x);                      \
+		Locator::getLogger()->warn("Error reading {}: {}", fn.c_str(), x);                      \
 		handler = type = "";                                                   \
 		return false;                                                          \
 	}
@@ -66,19 +67,20 @@ DriverList RageMovieTextureDriver::m_pDriverList;
 
 // Helper for MakeRageMovieTexture()
 static void
-DumpAVIDebugInfo(const RString& fn)
+DumpAVIDebugInfo(const std::string& fn)
 {
-	RString type, handler;
+	std::string type, handler;
 	if (!RageMovieTexture::GetFourCC(fn, handler, type))
 		return;
 
-	LOG->Trace("Movie %s has handler '%s', type '%s'",
+	Locator::getLogger()->trace("Movie {} has handler '{}', type '{}'",
 			   fn.c_str(),
 			   handler.c_str(),
 			   type.c_str());
 }
 
-static Preference<RString> g_sMovieDrivers("MovieDrivers", ""); // "" == default
+static Preference<std::string> g_sMovieDrivers("MovieDrivers",
+											   ""); // "" == default
 /* Try drivers in order of preference until we find one that works. */
 static LocalizedString MOVIE_DRIVERS_EMPTY("Arch",
 										   "Movie Drivers cannot be empty.");
@@ -90,46 +92,44 @@ RageMovieTexture::Create(const RageTextureID& ID)
 {
 	DumpAVIDebugInfo(ID.filename);
 
-	RString sDrivers = g_sMovieDrivers;
+	std::string sDrivers = g_sMovieDrivers;
 	if (sDrivers.empty())
 		sDrivers = DEFAULT_MOVIE_DRIVER_LIST;
 
-	vector<RString> DriversToTry;
+	vector<std::string> DriversToTry;
 	split(sDrivers, ",", DriversToTry, true);
 
 	if (DriversToTry.empty())
 		RageException::Throw("%s", MOVIE_DRIVERS_EMPTY.GetValue().c_str());
 
-	RageMovieTexture* ret = NULL;
+	RageMovieTexture* ret = nullptr;
 
-	FOREACH_CONST(RString, DriversToTry, Driver)
-	{
-		LOG->Trace("Initializing driver: %s", Driver->c_str());
+	for (auto& Driver : DriversToTry) {
+		Locator::getLogger()->trace("Initializing driver: {}", Driver);
 		RageDriver* pDriverBase =
-		  RageMovieTextureDriver::m_pDriverList.Create(*Driver);
+		  RageMovieTextureDriver::m_pDriverList.Create(Driver);
 
-		if (pDriverBase == NULL) {
-			LOG->Trace("Unknown movie driver name: %s", Driver->c_str());
+		if (pDriverBase == nullptr) {
+			Locator::getLogger()->trace("Unknown movie driver name: {}", Driver);
 			continue;
 		}
 
 		RageMovieTextureDriver* pDriver =
 		  dynamic_cast<RageMovieTextureDriver*>(pDriverBase);
-		ASSERT(pDriver != NULL);
+		ASSERT(pDriver != nullptr);
 
-		RString sError;
+		std::string sError;
 		ret = pDriver->Create(ID, sError);
 		delete pDriver;
 
-		if (ret == NULL) {
-			LOG->Trace(
-			  "Couldn't load driver %s: %s", Driver->c_str(), sError.c_str());
+		if (ret == nullptr) {
+			Locator::getLogger()->trace("Couldn't load driver {}: {}", Driver, sError.c_str());
 			SAFE_DELETE(ret);
 			continue;
 		}
-		LOG->Trace("Created movie texture \"%s\" with driver \"%s\"",
+		Locator::getLogger()->trace("Created movie texture \"{}\" with driver \"{}\"",
 				   ID.filename.c_str(),
-				   Driver->c_str());
+				   Driver.c_str());
 		break;
 	}
 	if (!ret)
@@ -138,28 +138,3 @@ RageMovieTexture::Create(const RageTextureID& ID)
 
 	return ret;
 }
-
-/*
- * (c) 2003-2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

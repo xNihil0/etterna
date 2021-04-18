@@ -1,11 +1,11 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "RageSoundDriver_PulseAudio.h"
-#include "RageLog.h"
-#include "RageSound.h"
-#include "RageSoundManager.h"
-#include "RageUtil.h"
-#include "RageTimer.h"
-#include "PrefsManager.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Sound/RageSound.h"
+#include "RageUtil/Sound/RageSoundManager.h"
+#include "RageUtil/Utils/RageUtil.h"
+#include "RageUtil/Misc/RageTimer.h"
+#include "Etterna/Singletons/PrefsManager.h"
 #include <pulse/error.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -42,12 +42,12 @@ RageSoundDriver_PulseAudio::~RageSoundDriver_PulseAudio()
 }
 
 /* Initialization */
-RString
+std::string
 RageSoundDriver_PulseAudio::Init()
 {
 	int error = 0;
 
-	LOG->Trace("Pulse: pa_threaded_mainloop_new()...");
+	Locator::getLogger()->trace("Pulse: pa_threaded_mainloop_new()...");
 	m_PulseMainLoop = pa_threaded_mainloop_new();
 	if (m_PulseMainLoop == NULL) {
 		return "pa_threaded_mainloop_new() failed!";
@@ -59,7 +59,7 @@ RageSoundDriver_PulseAudio::Init()
 	pa_proplist_sets(plist, PA_PROP_APPLICATION_VERSION, PACKAGE_VERSION);
 	pa_proplist_sets(plist, PA_PROP_MEDIA_ROLE, "game");
 
-	LOG->Trace("Pulse: pa_context_new_with_proplist()...");
+	Locator::getLogger()->trace("Pulse: pa_context_new_with_proplist()...");
 
 	m_PulseCtx = pa_context_new_with_proplist(
 	  pa_threaded_mainloop_get_api(m_PulseMainLoop), "StepMania", plist);
@@ -69,7 +69,7 @@ RageSoundDriver_PulseAudio::Init()
 		return "pa_context_new_with_proplist() failed!";
 	}
 #else
-	LOG->Trace("Pulse: pa_context_new()...");
+	Locator::getLogger()->trace("Pulse: pa_context_new()...");
 	m_PulseCtx = pa_context_new(pa_threaded_mainloop_get_api(m_PulseMainLoop),
 								"Stepmania");
 	if (m_PulseCtx == NULL) {
@@ -79,7 +79,7 @@ RageSoundDriver_PulseAudio::Init()
 
 	pa_context_set_state_callback(m_PulseCtx, StaticCtxStateCb, this);
 
-	LOG->Trace("Pulse: pa_context_connect()...");
+	Locator::getLogger()->trace("Pulse: pa_context_connect()...");
 	error = pa_context_connect(m_PulseCtx, NULL, (pa_context_flags_t)0, NULL);
 
 	if (error < 0) {
@@ -87,7 +87,7 @@ RageSoundDriver_PulseAudio::Init()
 						pa_strerror(pa_context_errno(m_PulseCtx)));
 	}
 
-	LOG->Trace("Pulse: pa_threaded_mainloop_start()...");
+	Locator::getLogger()->trace("Pulse: pa_threaded_mainloop_start()...");
 	error = pa_threaded_mainloop_start(m_PulseMainLoop);
 	if (error < 0) {
 		return ssprintf("pa_threaded_mainloop_start() returned %i", error);
@@ -138,10 +138,10 @@ RageSoundDriver_PulseAudio::m_InitStream(void)
 	/* log the used sample spec */
 	char specstring[PA_SAMPLE_SPEC_SNPRINT_MAX];
 	pa_sample_spec_snprint(specstring, sizeof(specstring), &ss);
-	LOG->Trace("Pulse: using sample spec: %s", specstring);
+	Locator::getLogger()->trace("Pulse: using sample spec: {}", specstring);
 
 	/* create the stream */
-	LOG->Trace("Pulse: pa_stream_new()...");
+	Locator::getLogger()->trace("Pulse: pa_stream_new()...");
 	m_PulseStream = pa_stream_new(m_PulseCtx, "Stepmania Audio", &ss, &map);
 	if (m_PulseStream == NULL) {
 		if (asprintf(&m_Error,
@@ -212,10 +212,10 @@ RageSoundDriver_PulseAudio::m_InitStream(void)
 	attr.prebuf = (uint32_t)-1;
 
 	/* log the used target buffer length */
-	LOG->Trace("Pulse: using target buffer length of %i bytes", attr.tlength);
+	Locator::getLogger()->trace("Pulse: using target buffer length of {} bytes", attr.tlength);
 
 	/* connect the stream for playback */
-	LOG->Trace("Pulse: pa_stream_connect_playback()...");
+	Locator::getLogger()->trace("Pulse: pa_stream_connect_playback()...");
 	error = pa_stream_connect_playback(
 	  m_PulseStream, NULL, &attr, PA_STREAM_AUTO_TIMING_UPDATE, NULL, NULL);
 	if (error < 0) {
@@ -236,16 +236,16 @@ RageSoundDriver_PulseAudio::CtxStateCb(pa_context* c)
 {
 	switch (pa_context_get_state(m_PulseCtx)) {
 		case PA_CONTEXT_CONNECTING:
-			LOG->Trace("Pulse: Context connecting...");
+			Locator::getLogger()->trace("Pulse: Context connecting...");
 			break;
 		case PA_CONTEXT_AUTHORIZING:
-			LOG->Trace("Pulse: Context authorizing...");
+			Locator::getLogger()->trace("Pulse: Context authorizing...");
 			break;
 		case PA_CONTEXT_SETTING_NAME:
-			LOG->Trace("Pulse: Context setting name...");
+			Locator::getLogger()->trace("Pulse: Context setting name...");
 			break;
 		case PA_CONTEXT_READY:
-			LOG->Trace("Pulse: Context ready now.");
+			Locator::getLogger()->trace("Pulse: Context ready now.");
 			m_InitStream();
 			break;
 		case PA_CONTEXT_TERMINATED:
@@ -266,10 +266,10 @@ RageSoundDriver_PulseAudio::StreamStateCb(pa_stream* s)
 {
 	switch (pa_stream_get_state(m_PulseStream)) {
 		case PA_STREAM_CREATING:
-			LOG->Trace("Pulse: Stream creating...");
+			Locator::getLogger()->trace("Pulse: Stream creating...");
 			break;
 		case PA_STREAM_READY:
-			LOG->Trace("Pulse: Stream ready now/");
+			Locator::getLogger()->trace("Pulse: Stream ready now/");
 			m_Sem.Post();
 			return;
 			break;
@@ -339,28 +339,3 @@ RageSoundDriver_PulseAudio::StaticStreamWriteCb(pa_stream* s,
 	RageSoundDriver_PulseAudio* obj = (RageSoundDriver_PulseAudio*)user;
 	obj->StreamWriteCb(s, length);
 }
-
-/*
- * (c) 2009 Damien Thebault
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

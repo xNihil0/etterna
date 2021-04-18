@@ -1,19 +1,21 @@
-#include "global.h"
-#include "RageLog.h"
-#include "RageUtil.h"
+#include "Etterna/Globals/global.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Utils/RageUtil.h"
 #include "ALSA9Helpers.h"
 #include "ALSA9Dynamic.h"
-#include "PrefsManager.h"
+#include "Etterna/Singletons/PrefsManager.h"
+
+#include <algorithm>
 
 /* int err; must be defined before using this macro */
 #define ALSA_CHECK(x)                                                          \
 	if (err < 0) {                                                             \
-		LOG->Info("ALSA: %s: %s", x, dsnd_strerror(err));                      \
+		Locator::getLogger()->info("ALSA: {}: {}", x, dsnd_strerror(err));                      \
 		return false;                                                          \
 	}
 #define ALSA_ASSERT(x)                                                         \
 	if (err < 0) {                                                             \
-		LOG->Warn("ALSA: %s: %s", x, dsnd_strerror(err));                      \
+		Locator::getLogger()->warn("ALSA: {}: {}", x, dsnd_strerror(err));                      \
 	}
 
 bool
@@ -124,7 +126,7 @@ Alsa9Buf::ErrorHandler(const char* file,
 {
 	va_list va;
 	va_start(va, fmt);
-	RString str = vssprintf(fmt, va);
+	std::string str = vssprintf(fmt, va);
 	va_end(va);
 
 	if (err)
@@ -133,7 +135,7 @@ Alsa9Buf::ErrorHandler(const char* file,
 	/* Annoying: these happen both normally (eg. "out of memory" when allocating
 	 * too many PCM slots) and abnormally, and there's no way to tell which is
 	 * which.  I don't want to pollute the warning output. */
-	LOG->Trace("ALSA error: %s:%i %s: %s", file, line, function, str.c_str());
+	Locator::getLogger()->trace("ALSA error: {}:{} {}: {}", file, line, function, str.c_str());
 }
 
 void
@@ -142,7 +144,7 @@ Alsa9Buf::InitializeErrorHandler()
 	dsnd_lib_error_set_handler(ErrorHandler);
 }
 
-static RString
+static std::string
 DeviceName()
 {
 	if (!PREFSMAN->m_iSoundDevice.Get().empty())
@@ -159,24 +161,22 @@ Alsa9Buf::GetSoundCardDebugInfo()
 	done = true;
 
 	if (DoesFileExist("/rootfs/proc/asound/version")) {
-		RString sVersion;
+		std::string sVersion;
 		GetFileContents("/rootfs/proc/asound/version", sVersion, true);
-		LOG->Info("ALSA: %s", sVersion.c_str());
+		Locator::getLogger()->info("ALSA: {}", sVersion.c_str());
 	}
 
 	InitializeErrorHandler();
 
 	int card = -1;
 	while (dsnd_card_next(&card) >= 0 && card >= 0) {
-		const RString id = ssprintf("hw:%d", card);
+		const std::string id = ssprintf("hw:%d", card);
 		snd_ctl_t* handle;
 		int err;
-		err = dsnd_ctl_open(&handle, id, 0);
+		err = dsnd_ctl_open(&handle, id.c_str(), 0);
 		if (err < 0) {
-			LOG->Info("Couldn't open card #%i (\"%s\") to probe: %s",
-					  card,
-					  id.c_str(),
-					  dsnd_strerror(err));
+			Locator::getLogger()->info("Couldn't open card #{} (\"{}\") to probe: {}",
+					  card, id.c_str(), dsnd_strerror(err));
 			continue;
 		}
 
@@ -184,10 +184,8 @@ Alsa9Buf::GetSoundCardDebugInfo()
 		dsnd_ctl_card_info_alloca(&info);
 		err = dsnd_ctl_card_info(handle, info);
 		if (err < 0) {
-			LOG->Info("Couldn't get card info for card #%i (\"%s\"): %s",
-					  card,
-					  id.c_str(),
-					  dsnd_strerror(err));
+			Locator::getLogger()->info("Couldn't get card info for card #{} (\"{}\"): {}",
+					  card, id.c_str(), dsnd_strerror(err));
 			dsnd_ctl_close(handle);
 			continue;
 		}
@@ -202,14 +200,12 @@ Alsa9Buf::GetSoundCardDebugInfo()
 			err = dsnd_ctl_pcm_info(handle, pcminfo);
 			if (err < 0) {
 				if (err != -ENOENT)
-					LOG->Info("dsnd_ctl_pcm_info(%i) (%s) failed: %s",
-							  card,
-							  id.c_str(),
-							  dsnd_strerror(err));
+					Locator::getLogger()->info("dsnd_ctl_pcm_info({}) ({}) failed: {}",
+							  card, id.c_str(), dsnd_strerror(err));
 				continue;
 			}
 
-			LOG->Info("ALSA Driver: %i: %s [%s], device %i: %s [%s], %i/%i "
+			Locator::getLogger()->info("ALSA Driver: {}: {} [{}], device {}: {} [{}], {}/{} "
 					  "subdevices avail",
 					  card,
 					  dsnd_ctl_card_info_get_name(info),
@@ -224,10 +220,10 @@ Alsa9Buf::GetSoundCardDebugInfo()
 	}
 
 	if (card == 0)
-		LOG->Info("No ALSA sound cards were found.");
+		Locator::getLogger()->info("No ALSA sound cards were found.");
 
 	if (!PREFSMAN->m_iSoundDevice.Get().empty())
-		LOG->Info("ALSA device overridden to \"%s\"",
+		Locator::getLogger()->info("ALSA device overridden to \"{}\"",
 				  PREFSMAN->m_iSoundDevice.Get().c_str());
 }
 
@@ -239,9 +235,13 @@ Alsa9Buf::Alsa9Buf()
 	preferred_writeahead = 8192;
 	preferred_chunksize = 1024;
 	pcm = NULL;
+	channels = 1;
+	buffersize = 16;
+	writeahead = false;
+	chunksize = 1024;
 }
 
-RString
+std::string
 Alsa9Buf::Init(int channels_, int iWriteahead, int iChunkSize, int iSampleRate)
 {
 	channels = channels_;
@@ -259,26 +259,25 @@ Alsa9Buf::Init(int channels_, int iWriteahead, int iChunkSize, int iSampleRate)
 	/* Open the device. */
 	int err;
 	err = dsnd_pcm_open(
-	  &pcm, DeviceName(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
+	  &pcm, DeviceName().c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
 	if (err < 0)
 		return ssprintf(
 		  "dsnd_pcm_open(%s): %s", DeviceName().c_str(), dsnd_strerror(err));
 
 	if (!SetHWParams()) {
-		CHECKPOINT;
 		return "SetHWParams failed";
 	}
 
 	SetSWParams();
 
-	LOG->Info("ALSA: Mixing at %ihz", samplerate);
+	Locator::getLogger()->info("ALSA: Mixing at {}hz", samplerate);
 
 	if (preferred_writeahead != writeahead)
-		LOG->Info("ALSA: writeahead adjusted from %u to %u",
+		Locator::getLogger()->info("ALSA: writeahead adjusted from {} to {}",
 				  (unsigned)preferred_writeahead,
 				  (unsigned)writeahead);
 	if (preferred_chunksize != chunksize)
-		LOG->Info("ALSA: chunksize adjusted from %u to %u",
+		Locator::getLogger()->info("ALSA: chunksize adjusted from {} to {}",
 				  (unsigned)preferred_chunksize,
 				  (unsigned)chunksize);
 
@@ -299,7 +298,7 @@ Alsa9Buf::GetNumFramesToFill()
 {
 	/* Make sure we can write ahead at least two chunks.  Otherwise, we'll only
 	 * fill one chunk ahead, and underrun. */
-	int ActualWriteahead = max(writeahead, chunksize * 2);
+	int ActualWriteahead = std::max(writeahead, chunksize * 2);
 
 	snd_pcm_sframes_t avail_frames = dsnd_pcm_avail_update(pcm);
 
@@ -307,7 +306,7 @@ Alsa9Buf::GetNumFramesToFill()
 	if (avail_frames > total_frames) {
 		/* underrun */
 		const int size = avail_frames - total_frames;
-		LOG->Trace("underrun (%i frames)", size);
+		Locator::getLogger()->trace("underrun ({} frames)", size);
 		int large_skip_threshold = 2 * samplerate;
 
 		/* For small underruns, ignore them.  We'll return the maximum
@@ -326,20 +325,20 @@ Alsa9Buf::GetNumFramesToFill()
 		avail_frames = dsnd_pcm_avail_update(pcm);
 
 	if (avail_frames < 0) {
-		LOG->Trace("RageSoundDriver_ALSA9::GetData: dsnd_pcm_avail_update: %s",
+		Locator::getLogger()->trace("RageSoundDriver_ALSA9::GetData: dsnd_pcm_avail_update: {}",
 				   dsnd_strerror(avail_frames));
 		return 0;
 	}
 
 	/* Number of frames that have data: */
 	const snd_pcm_sframes_t filled_frames =
-	  max(0l, total_frames - avail_frames);
+	  std::max(0l, total_frames - avail_frames);
 
 	/* Number of frames that don't have data, that are within the writeahead: */
 	snd_pcm_sframes_t unfilled_frames =
-	  clamp(ActualWriteahead - filled_frames,
-			0l,
-			(snd_pcm_sframes_t)ActualWriteahead);
+	  std::clamp(ActualWriteahead - filled_frames,
+				 0l,
+				 (snd_pcm_sframes_t)ActualWriteahead);
 
 	//	LOG->Trace( "total_fr: %i; avail_fr: %i; filled_fr: %i; ActualWr %i;
 	// chunksize %i; unfilled_frames %i ", 			total_frames, avail_frames,
@@ -376,8 +375,8 @@ Alsa9Buf::Write(const int16_t* buffer, int frames)
 	} while (wrote == -EAGAIN);
 
 	if (wrote < 0) {
-		LOG->Trace(
-		  "RageSoundDriver_ALSA9::GetData: dsnd_pcm_mmap_writei: %s (%i)",
+		Locator::getLogger()->trace(
+		  "RageSoundDriver_ALSA9::GetData: dsnd_pcm_mmap_writei: {} ({})",
 		  dsnd_strerror(wrote),
 		  wrote);
 		return;
@@ -385,7 +384,7 @@ Alsa9Buf::Write(const int16_t* buffer, int frames)
 
 	last_cursor_pos += wrote;
 	if (wrote < frames)
-		LOG->Trace("Couldn't write whole buffer? (%i < %i)", wrote, frames);
+		Locator::getLogger()->trace("Couldn't write whole buffer? ({} < {})", wrote, frames);
 }
 
 /*
@@ -396,14 +395,14 @@ bool
 Alsa9Buf::Recover(int r)
 {
 	if (r == -EPIPE) {
-		LOG->Trace("RageSound_ALSA9::Recover (prepare)");
+		Locator::getLogger()->trace("RageSound_ALSA9::Recover (prepare)");
 		int err = dsnd_pcm_prepare(pcm);
 		ALSA_ASSERT("dsnd_pcm_prepare (Recover)");
 		return true;
 	}
 
 	if (r == -ESTRPIPE) {
-		LOG->Trace("RageSound_ALSA9::Recover (resume)");
+		Locator::getLogger()->trace("RageSound_ALSA9::Recover (resume)");
 		int err;
 		while ((err = dsnd_pcm_resume(pcm)) == -EAGAIN)
 			usleep(10000); // 10ms
@@ -445,8 +444,8 @@ Alsa9Buf::Stop()
 	last_cursor_pos = 0;
 }
 
-RString
-Alsa9Buf::GetHardwareID(RString name)
+std::string
+Alsa9Buf::GetHardwareID(std::string name)
 {
 	InitializeErrorHandler();
 
@@ -455,9 +454,9 @@ Alsa9Buf::GetHardwareID(RString name)
 
 	snd_ctl_t* handle;
 	int err;
-	err = dsnd_ctl_open(&handle, name, 0);
+	err = dsnd_ctl_open(&handle, name.c_str(), 0);
 	if (err < 0) {
-		LOG->Info("Couldn't open card \"%s\" to get ID: %s",
+		Locator::getLogger()->info("Couldn't open card \"{}\" to get ID: {}",
 				  name.c_str(),
 				  dsnd_strerror(err));
 		return "???";
@@ -466,33 +465,8 @@ Alsa9Buf::GetHardwareID(RString name)
 	snd_ctl_card_info_t* info;
 	dsnd_ctl_card_info_alloca(&info);
 	err = dsnd_ctl_card_info(handle, info);
-	RString ret = dsnd_ctl_card_info_get_id(info);
+	std::string ret = dsnd_ctl_card_info_get_id(info);
 	dsnd_ctl_close(handle);
 
 	return ret;
 }
-
-/*
- * (c) 2002-2004 Glenn Maynard, Aaron VonderHaar
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

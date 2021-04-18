@@ -1,10 +1,9 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "archutils/Win32/WindowIcon.h"
-#include "RageLog.h"
-#include "RageUtil.h"
-#include "RageSurface.h"
-#include "RageSurfaceUtils.h"
-#include "RageSurface_Load.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Graphics/RageSurface.h"
+#include "RageUtil/Graphics/RageSurfaceUtils.h"
+#include "RageUtil/Graphics/RageSurface_Load.h"
 #include "archutils/Win32/ErrorStrings.h"
 
 #include <wingdi.h>
@@ -86,9 +85,7 @@ IconFromSurface(const RageSurface* pSrcImg)
 	free(pBitmap);
 
 	if (icon == NULL) {
-		LOG->Trace(
-		  "%s",
-		  werr_ssprintf(GetLastError(), "CreateIconFromResourceEx").c_str());
+		Locator::getLogger()->trace(werr_ssprintf(GetLastError(), "CreateIconFromResourceEx"));
 		return NULL;
 	}
 
@@ -96,13 +93,12 @@ IconFromSurface(const RageSurface* pSrcImg)
 }
 
 HICON
-IconFromFile(const RString& sIconFile)
+IconFromFile(const std::string& sIconFile)
 {
-	RString sError;
+	std::string sError;
 	RageSurface* pImg = RageSurfaceUtils::LoadFile(sIconFile, sError);
 	if (pImg == NULL) {
-		LOG->Warn(
-		  "Couldn't open icon \"%s\": %s", sIconFile.c_str(), sError.c_str());
+		Locator::getLogger()->warn("Couldn't open icon \"{}\": {}", sIconFile.c_str(), sError.c_str());
 		return NULL;
 	}
 

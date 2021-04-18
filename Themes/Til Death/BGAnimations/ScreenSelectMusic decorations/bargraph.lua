@@ -27,13 +27,13 @@ t[#t + 1] =
 	end,
 	SetCommand = function(self)
 		song = GAMESTATE:GetCurrentSong()
-		if GAMESTATE:IsPlayerEnabled(PLAYER_1) then
+		if GAMESTATE:IsPlayerEnabled() then
 			hsTableP1 = getScoreList(PLAYER_1)
 			if hsTableP1 ~= nil then
 				topScoreP1 = getScoreFromTable(hsTableP1, 1)
 			end
 		end
-		if GAMESTATE:IsPlayerEnabled(PLAYER_2) then
+		if GAMESTATE:IsPlayerEnabled() then
 			hsTableP2 = getScoreList(PLAYER_2)
 			if hsTableP2 ~= nil then
 				topScoreP2 = getScoreFromTable(hsTableP2, 1)
@@ -43,7 +43,7 @@ t[#t + 1] =
 	CurrentSongChangedMessageCommand = function(self)
 		self:playcommand("Set")
 	end,
-	CurrentStepsP1ChangedMessageCommand = function(self)
+	CurrentStepsChangedMessageCommand = function(self)
 		self:playcommand("Set")
 	end
 }
@@ -54,7 +54,7 @@ t[#t + 1] =
 		self:xy(barXP1, barYP1)
 	end,
 	BeginCommand = function(self)
-		if GAMESTATE:IsHumanPlayer(PLAYER_1) then
+		if GAMESTATE:IsHumanPlayer() then
 			self:visible(true)
 		else
 			self:visible(false)
@@ -112,7 +112,7 @@ t[#t + 1] =
 			self:stoptweening()
 			self:queuecommand("Set")
 		end,
-		CurrentStepsP1ChangedMessageCommand = function(self)
+		CurrentStepsChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -144,7 +144,7 @@ t[#t + 1] =
 			self:stoptweening()
 			self:queuecommand("Set")
 		end,
-		CurrentStepsP1ChangedMessageCommand = function(self)
+		CurrentStepsChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -175,7 +175,7 @@ t[#t + 1] =
 			self:stoptweening()
 			self:queuecommand("Set")
 		end,
-		CurrentStepsP1ChangedMessageCommand = function(self)
+		CurrentStepsChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -205,7 +205,7 @@ t[#t + 1] =
 			self:stoptweening()
 			self:queuecommand("Set")
 		end,
-		CurrentStepsP1ChangedMessageCommand = function(self)
+		CurrentStepsChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -234,7 +234,7 @@ t[#t + 1] =
 			self:stoptweening()
 			self:queuecommand("Set")
 		end,
-		CurrentStepsP1ChangedMessageCommand = function(self)
+		CurrentStepsChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -259,7 +259,7 @@ t[#t + 1] =
 			self:stoptweening()
 			self:queuecommand("Set")
 		end,
-		CurrentStepsP1ChangedMessageCommand = function(self)
+		CurrentStepsChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -272,7 +272,7 @@ t[#t + 1] =
 		self:xy(barXP2, barYP2)
 	end,
 	BeginCommand = function(self)
-		if GAMESTATE:IsHumanPlayer(PLAYER_2) then
+		if GAMESTATE:IsHumanPlayer() then
 			self:visible(true)
 		else
 			self:visible(false)
@@ -329,10 +329,6 @@ t[#t + 1] =
 		CurrentSongChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
-		end,
-		CurrentStepsP2ChangedMessageCommand = function(self)
-			self:stoptweening()
-			self:queuecommand("Set")
 		end
 	},
 	Def.Quad {
@@ -359,10 +355,6 @@ t[#t + 1] =
 			self:zoomx((judge / notes) * barWidth)
 		end,
 		CurrentSongChangedMessageCommand = function(self)
-			self:stoptweening()
-			self:queuecommand("Set")
-		end,
-		CurrentStepsP2ChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -392,10 +384,6 @@ t[#t + 1] =
 		CurrentSongChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
-		end,
-		CurrentStepsP2ChangedMessageCommand = function(self)
-			self:stoptweening()
-			self:queuecommand("Set")
 		end
 	},
 	Def.Quad {
@@ -420,10 +408,6 @@ t[#t + 1] =
 			self:zoomx((judge / notes) * barWidth)
 		end,
 		CurrentSongChangedMessageCommand = function(self)
-			self:stoptweening()
-			self:queuecommand("Set")
-		end,
-		CurrentStepsP2ChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end
@@ -451,10 +435,6 @@ t[#t + 1] =
 		CurrentSongChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
-		end,
-		CurrentStepsP2ChangedMessageCommand = function(self)
-			self:stoptweening()
-			self:queuecommand("Set")
 		end
 	},
 	Def.Quad {
@@ -477,10 +457,6 @@ t[#t + 1] =
 			self:zoomx((judge / notes) * barWidth)
 		end,
 		CurrentSongChangedMessageCommand = function(self)
-			self:stoptweening()
-			self:queuecommand("Set")
-		end,
-		CurrentStepsP2ChangedMessageCommand = function(self)
 			self:stoptweening()
 			self:queuecommand("Set")
 		end

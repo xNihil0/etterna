@@ -83,8 +83,9 @@ local function searchInput(event)
 			searchopen = true
 			whee:Search(searchtitle, searchdesc, searchingame, searchpassword, searchopen)
 			whee:StopSearch()
+			local tind = getTabIndex()
 			resetTabIndex(0)
-			MESSAGEMAN:Broadcast("TabChanged")
+			MESSAGEMAN:Broadcast("TabChanged", {from = tind, to = 0})
 			MESSAGEMAN:Broadcast("EndingSearch")
 		elseif event.button == "Start" then
 			inputting = 0
@@ -99,7 +100,7 @@ local function searchInput(event)
 			backspace = true
 			inputchar = searchstring:sub(1, -2)
 		elseif event.DeviceInput.button == "DeviceButton_v" and CtrlPressed then
-			inputchar = HOOKS:GetClipboard()
+			inputchar = Arch.getClipboard()
 		else
 			for i = 1, #englishes do -- add standard characters to string
 				if event.DeviceInput.button == "DeviceButton_" .. englishes[i] then
@@ -141,18 +142,30 @@ local function searchInput(event)
 	end
 end
 
+local translated_info = {
+	Title = THEME:GetString("TabSearch", "RoomTitle"),
+	Subtitle = THEME:GetString("TabSearch", "RoomSubtitle"),
+	Opened = THEME:GetString("TabSearch", "RoomOpened"),
+	Passworded = THEME:GetString("TabSearch", "RoomPassworded"),
+	InGameplay = THEME:GetString("TabSearch", "RoomInGameplay"),
+	TabTitle = THEME:GetString("TabSearch", "Title"),
+	Explanation = THEME:GetString("TabSearch", "ExplainLimitation")
+}
+
 local function ButtonActive(self)
 	return isOver(self) and update
 end
 
 local t =
 	Def.ActorFrame {
+	InitCommand = function(self)
+		self:zoom(0.85)
+	end,
 	BeginCommand = function(self)
 		whee = SCREENMAN:GetTopScreen():GetMusicWheel()
 		SCREENMAN:GetTopScreen():AddInputCallback(searchInput)
 		self:finishtweening()
 		if NSMAN:IsETTP() then
-			ms.ok("Song search activated")
 			self:visible(true)
 			active = true
 			whee:Move(0)
@@ -166,7 +179,6 @@ local t =
 	SetCommand = function(self)
 		self:finishtweening()
 		if getTabIndex() == (NSMAN:IsETTP() and 0 or 1) then
-			ms.ok("Song search activated")
 			MESSAGEMAN:Broadcast("BeginningSearch")
 			self:visible(true)
 			active = true
@@ -207,12 +219,7 @@ local t =
 		{
 			InitCommand = function(self)
 				self:xy(frameX + 20, frameY - 200):zoom(0.4):halign(0)
-			end,
-			SetCommand = function(self)
-				self:settext("Title: ")
-			end,
-			UpdateStringMessageCommand = function(self)
-				self:queuecommand("Set")
+				self:settextf("%s: ", translated_info["Title"])
 			end
 		},
 	Def.Quad {
@@ -252,12 +259,7 @@ local t =
 		{
 			InitCommand = function(self)
 				self:xy(frameX + 20, frameY - 150):zoom(0.4):halign(0)
-			end,
-			SetCommand = function(self)
-				self:settext("Desc: ")
-			end,
-			UpdateStringMessageCommand = function(self)
-				self:queuecommand("Set")
+				self:settextf("%s: ", translated_info["Subtitle"])
 			end
 		},
 	Def.Quad {
@@ -285,12 +287,7 @@ local t =
 		{
 			InitCommand = function(self)
 				self:xy(frameX + 20, frameY - 50):zoom(0.4):halign(0)
-			end,
-			SetCommand = function(self)
-				self:settext("Open")
-			end,
-			UpdateStringMessageCommand = function(self)
-				self:queuecommand("Set")
+				self:settext(translated_info["Opened"])
 			end
 		},
 	Def.Quad {
@@ -319,12 +316,7 @@ local t =
 		{
 			InitCommand = function(self)
 				self:xy(frameX + frameWidth / 2 - 50, frameY - 50):zoom(0.4):halign(0)
-			end,
-			SetCommand = function(self)
-				self:settext("Password")
-			end,
-			UpdateStringMessageCommand = function(self)
-				self:queuecommand("Set")
+				self:settext(translated_info["Passworded"])
 			end
 		},
 	Def.Quad {
@@ -353,12 +345,7 @@ local t =
 		{
 			InitCommand = function(self)
 				self:xy(frameX + frameWidth - 100, frameY - 50):zoom(0.4):halign(0)
-			end,
-			SetCommand = function(self)
-				self:settext("Ingame")
-			end,
-			UpdateStringMessageCommand = function(self)
-				self:queuecommand("Set")
+				self:settext(translated_info["InGameplay"])
 			end
 		},
 	Def.Quad {
@@ -387,18 +374,14 @@ local t =
 		{
 			InitCommand = function(self)
 				self:xy(frameX + 20, frameY + 70):zoom(0.5):halign(0)
+				self:settext(translated_info["Explanation"])
 			end,
-			SetCommand = function(self)
-				self:settext("Currently supports standard english alphabet only.")
-			end,
-			UpdateStringMessageCommand = function(self)
-				self:queuecommand("Set")
-			end
 		},
 	LoadFont("Common Normal") ..
 		{
 			InitCommand = function(self)
-				self:xy(frameX + 5, offsetY + 36):zoom(0.6):halign(0):diffuse(getMainColor("positive")):settext("Search")
+				self:xy(frameX + 5, offsetY + 36):zoom(0.6):halign(0):diffuse(getMainColor("positive"))
+				self:settext(translated_info["TabTitle"])
 			end
 		}
 }

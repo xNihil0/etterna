@@ -8,15 +8,15 @@ ms = {}
 
 -- Radar values people on earth actually care about
 ms.RelevantRadarsShort = {
-	"Notes:",
-	"Jumps:",
-	"Hands:",
-	"Holds:",
-	"Mines:",
-	"TotalTaps:",
-	"Rolls:",
-	"Lifts:",
-	"Fakes:"
+	THEME:GetString("RadarCategoryShort", "Notes")..":",
+	THEME:GetString("RadarCategoryShort", "Jumps")..":",
+	THEME:GetString("RadarCategoryShort", "Hands")..":",
+	THEME:GetString("RadarCategoryShort", "Holds")..":",
+	THEME:GetString("RadarCategoryShort", "Mines")..":",
+	THEME:GetString("RadarCategoryShort", "TotalTaps")..":",
+	THEME:GetString("RadarCategoryShort", "Rolls")..":",
+	THEME:GetString("RadarCategoryShort", "Lifts")..":",
+	THEME:GetString("RadarCategoryShort", "Fakes")..":"
 }
 
 ms.RelevantRadars = {
@@ -76,7 +76,55 @@ ms.SkillSetsShort = {
 	"Tech"
 }
 
-ms.JudgeScalers = {1.50, 1.33, 1.16, 1.00, 0.84, 0.66, 0.50, 0.33, 0.20}
+ms.SkillSetsTranslatedByName = {
+	Overall = THEME:GetString("Skillsets", "Overall"),
+	Stream = THEME:GetString("Skillsets", "Stream"),
+	Jumpstream = THEME:GetString("Skillsets", "Jumpstream"),
+	Handstream = THEME:GetString("Skillsets", "Handstream"),
+	Stamina = THEME:GetString("Skillsets", "Stamina"),
+	JackSpeed = THEME:GetString("Skillsets", "JackSpeed"),
+	Chordjack = THEME:GetString("Skillsets", "Chordjack"),
+	Technical = THEME:GetString("Skillsets", "Technical"),
+}
+
+ms.SkillSetsTranslated = {
+	THEME:GetString("Skillsets", "Overall"),
+	THEME:GetString("Skillsets", "Stream"),
+	THEME:GetString("Skillsets", "Jumpstream"),
+	THEME:GetString("Skillsets", "Handstream"),
+	THEME:GetString("Skillsets", "Stamina"),
+	THEME:GetString("Skillsets", "JackSpeed"),
+	THEME:GetString("Skillsets", "Chordjack"),
+	THEME:GetString("Skillsets", "Technical"),
+}
+
+ms.JudgeScalers = GAMESTATE:GetTimingScales()
+
+ms.BaseJudgeWindows = {
+	22.5, -- max marvelous
+	45.0, -- max perfect
+	90.0, -- max great
+	135.0, -- max good
+	180.0 -- max bad
+}
+
+-- convert a Judge and Judgment to ms of the upper or lower bound of the window
+function ms.getLowerWindowForJudgment(judgment, scale)
+	local jdgIndex = ms.JudgeCountInverse[judgment]
+	if jdgIndex == 1 then
+		return 0
+	end
+	return ms.BaseJudgeWindows[jdgIndex - 1] * scale
+end
+function ms.getUpperWindowForJudgment(judgment, scale)
+	local jdgIndex = ms.JudgeCountInverse[judgment]
+	if jdgIndex >= 5 then
+		return 180 -- capped at 180
+	end
+	return ms.BaseJudgeWindows[jdgIndex] * scale
+end
+
+local musicstr = THEME:GetString("GeneralInfo", "RateMusicString")
 
 -- **Functions**
 function ms.ok(m)
@@ -85,6 +133,81 @@ function ms.ok(m)
 	else
 		SCREENMAN:SystemMessage(m)
 	end
+end
+
+--[[
+	Print a thing to the error console (F3+F6+8 to enable, F3+F6+9 to make it persist)
+	str: anything that can be used with tostring()
+]]
+function ms.p(str)
+	MESSAGEMAN:Broadcast("ScriptError", {message = tostring(str)})
+end
+
+--[[
+	This runs the LuaJIT profiler.
+	Shows the approximate line of section of Lua that are being used the most.
+	This will cause a minor fps drop.
+]]
+function ms.startjitprofiler()
+	local profile = require("jit.profile")
+	local tH = {}
+	local tHS = {}
+	profile.start(
+		"li1",
+		function(th, samples, vmmode)
+			local f = require("jit.profile").dumpstack(th, "pl", 1)
+			tH[f] = 1 + (tH[f] or 0)
+			if not tHS[f] then
+				tHS[f] = {}
+			end
+			tHS[f][vmmode] = (tHS[f][vmmode] or 0) + 1
+		end
+	)
+	local function dump(o)
+		if type(o) == "table" then
+			local s = "{ "
+			for k, v in pairs(o) do
+				if type(k) ~= "number" then
+					k = '"' .. k .. '"'
+				end
+				s = s .. "[" .. k .. "] = " .. dump(v) .. ",\n"
+			end
+			return s .. "} "
+		else
+			return tostring(o)
+		end
+	end
+	SCREENMAN:GetTopScreen():setInterval(
+		function()
+			local tmp = {}
+			local n = 0
+			for k, v in pairs(tH) do
+				tmp[n + 1] = {k, v}
+				n = n + 1
+			end
+			table.sort(
+				tmp,
+				function(a, b)
+					return a[2] > b[2]
+				end
+			)
+			local str = ""
+			for _, v in ipairs(tmp) do
+				str = str .. dump(v[1]) .. " =" .. tostring(v[2]) .. "\n"
+			end
+
+			SCREENMAN:SystemMessage(str)
+		end,
+		1
+	)
+end
+
+--[[
+	Stop the LuaJIT profiler only if it has already been started.
+]]
+function ms.stopjitprofiler()
+	local profile = require("jit.profile")
+	profile.stop()
 end
 
 function ms.type(m)
@@ -112,7 +235,7 @@ function wifeMean(t)
 	end
 	local o = 0
 	for i = 1, c do
-		if t[i] ~= 1000 then
+		if t[i] ~= 1000 and t[i] ~= -1100 then
 			o = o + t[i]
 		else
 			m = m + 1
@@ -129,7 +252,7 @@ function wifeAbsMean(t)
 	end
 	local o = 0
 	for i = 1, c do
-		if t[i] ~= 1000 then
+		if t[i] ~= 1000 and t[i] ~= -1100 then
 			o = o + math.abs(t[i])
 		else
 			m = m + 1
@@ -143,7 +266,7 @@ function wifeSd(t)
 	local u2 = 0
 	local m = 0
 	for i = 1, #t do
-		if t[i] ~= 1000 then
+		if t[i] ~= 1000 and t[i] ~= -1100 then
 			u2 = u2 + (t[i] - u) ^ 2
 		else
 			m = m + 1
@@ -155,7 +278,7 @@ end
 function wifeRange(t)
 	local x, y = 10000, 0
 	for i = 1, #t do
-		if t[i] ~= 1000 then
+		if math.abs(t[i]) <= 180 then		-- some replays (online ones i think?) are flagging misses as 1100 for some reason
 			if math.abs(t[i]) < math.abs(x) then
 				x = t[i]
 			end
@@ -196,7 +319,11 @@ end
 
 -- Grabs the currently selected rate as a string in the form of "r.rrx" while dropping trailing 0s
 function getCurRateString()
-	return string.format("%.2f", getCurRateValue()):gsub("%.?0+$", "") .. "x"
+	return getRateString(getCurRateValue())
+end
+
+function getRateString(x)
+	return string.format("%.2f", x):gsub("%.?0+$", "") .. "x"
 end
 
 function getCurRateDisplayString()
@@ -209,7 +336,7 @@ function getRateDisplayString(x)
 	elseif x == "2x" then
 		x = "2.0x"
 	end
-	return x .. "Music"
+	return x .. musicstr
 end
 
 function getCurRateValue()
@@ -217,7 +344,7 @@ function getCurRateValue()
 end
 
 function getCurKey()
-	return GAMESTATE:GetCurrentSteps(PLAYER_1):GetChartKey()
+	return GAMESTATE:GetCurrentSteps():GetChartKey()
 end
 
 -- returns a string of keys for a table
@@ -244,10 +371,8 @@ function formLink(x, y)
 end
 
 function GetPlayableTime()
-	local td = GAMESTATE:GetCurrentSteps(PLAYER_1):GetTimingData()
-	local song = GAMESTATE:GetCurrentSong()
-	return (td:GetElapsedTimeFromBeat(song:GetLastBeat()) - td:GetElapsedTimeFromBeat(song:GetFirstBeat())) /
-		getCurRateValue()
+	local step = GAMESTATE:GetCurrentSteps()
+	return step:GetLengthSeconds()
 end
 
 function ChangeMusicRate(rate, params)
@@ -256,7 +381,7 @@ function ChangeMusicRate(rate, params)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Song"):MusicRate(rate + 0.1)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Current"):MusicRate(rate + 0.1)
 		MESSAGEMAN:Broadcast("CurrentRateChanged")
-	elseif params.Name == "NextScore" and rate > 0.75 and (getTabIndex() == 0 or getTabIndex() == 1) then
+	elseif params.Name == "NextScore" and rate > 0.55 and (getTabIndex() == 0 or getTabIndex() == 1) then
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(rate - 0.1)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Song"):MusicRate(rate - 0.1)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Current"):MusicRate(rate - 0.1)
@@ -268,10 +393,15 @@ function ChangeMusicRate(rate, params)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Song"):MusicRate(rate + 0.05)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Current"):MusicRate(rate + 0.05)
 		MESSAGEMAN:Broadcast("CurrentRateChanged")
-	elseif params.Name == "NextRate" and rate > 0.7 and (getTabIndex() == 0 or getTabIndex() == 1) then
+	elseif params.Name == "NextRate" and rate > 0.5 and (getTabIndex() == 0 or getTabIndex() == 1) then
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Preferred"):MusicRate(rate - 0.05)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Song"):MusicRate(rate - 0.05)
 		GAMESTATE:GetSongOptionsObject("ModsLevel_Current"):MusicRate(rate - 0.05)
 		MESSAGEMAN:Broadcast("CurrentRateChanged")
 	end
+end
+
+-- hur dur floats
+for i = 1, #ms.JudgeScalers do
+	ms.JudgeScalers[i] = notShit.round(ms.JudgeScalers[i], 2)
 end

@@ -1,14 +1,15 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "RageSoundDriver_DSound_Software.h"
 #include "DSoundHelpers.h"
 
-#include "RageLog.h"
-#include "RageUtil.h"
-#include "RageSoundManager.h"
-#include "PrefsManager.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Utils/RageUtil.h"
+#include "Etterna/Singletons/PrefsManager.h"
 #include "archutils/Win32/ErrorStrings.h"
 
-REGISTER_SOUND_DRIVER_CLASS2(DirectSound - sw, DSound_Software);
+// clang-format off
+REGISTER_SOUND_DRIVER_CLASS2(DirectSound-sw, DSound_Software);
+// clang-format on
 
 static const int channels = 2;
 static const int bytes_per_frame = channels * 2; /* 16-bit */
@@ -29,7 +30,7 @@ RageSoundDriver_DSound_Software::MixerThread()
 	if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL))
 		if (!SetThreadPriority(GetCurrentThread(),
 							   THREAD_PRIORITY_ABOVE_NORMAL))
-			LOG->Warn(werr_ssprintf(GetLastError(),
+			Locator::getLogger()->warn(werr_ssprintf(GetLastError(),
 									"Failed to set sound thread priority"));
 
 	/* Fill a buffer before we start playing, so we don't play whatever junk is
@@ -85,13 +86,13 @@ RageSoundDriver_DSound_Software::MixerThread_start(void* p)
 RageSoundDriver_DSound_Software::RageSoundDriver_DSound_Software()
 {
 	m_bShutdownMixerThread = false;
-	m_pPCM = NULL;
+	m_pPCM = nullptr;
 }
 
-RString
+std::string
 RageSoundDriver_DSound_Software::Init()
 {
-	RString sError = ds.Init();
+	std::string sError = ds.Init();
 	if (sError != "")
 		return sError;
 
@@ -118,14 +119,14 @@ RageSoundDriver_DSound_Software::Init()
 	if (sError != "")
 		return sError;
 
-	LOG->Info("Software mixing at %i hz", m_iSampleRate);
+	Locator::getLogger()->info("Software mixing at {} hz", m_iSampleRate);
 
 	StartDecodeThread();
 
 	m_MixingThread.SetName("Mixer thread");
 	m_MixingThread.Create(MixerThread_start, this);
 
-	return RString();
+	return std::string();
 }
 
 RageSoundDriver_DSound_Software::~RageSoundDriver_DSound_Software()
@@ -133,11 +134,11 @@ RageSoundDriver_DSound_Software::~RageSoundDriver_DSound_Software()
 	/* Signal the mixing thread to quit. */
 	if (m_MixingThread.IsCreated()) {
 		m_bShutdownMixerThread = true;
-		LOG->Trace("Shutting down mixer thread ...");
-		LOG->Flush();
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->trace("Shutting down mixer thread ...");
 		m_MixingThread.Wait();
-		LOG->Trace("Mixer thread shut down.");
-		LOG->Flush();
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->trace("Mixer thread shut down.");
 	}
 
 	delete m_pPCM;
@@ -147,7 +148,7 @@ void
 RageSoundDriver_DSound_Software::SetupDecodingThread()
 {
 	if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL))
-		LOG->Warn(werr_ssprintf(GetLastError(),
+		Locator::getLogger()->warn(werr_ssprintf(GetLastError(),
 								"Failed to set decoding thread priority"));
 }
 

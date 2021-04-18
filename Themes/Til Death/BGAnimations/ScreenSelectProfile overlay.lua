@@ -1,4 +1,43 @@
---Commenting out the Player 2 stuff so if someone is attempting to use this theme for versus or 2P side, it's not going to work. Go use Prim's original spawnhack theme for that. -Misterkister
+local function selectprofile(self)
+	if isOver(self) then
+		SCREENMAN:GetTopScreen():SetProfileIndex(PLAYER_1, self:GetParent():GetName() + 1)
+		SCREENMAN:GetTopScreen():Finish()
+	end
+end
+local function genericHighlight(self, highlight, base, clickaction)
+	local highlight = highlight or 0.6
+	local base = base or 1
+	self:SetUpdateFunction(function(self)
+		if self:IsVisible() then
+			self:RunCommandsOnChildren(
+				function(self)
+					if isOver(self) then
+						self:diffusealpha(highlight)
+					else
+						self:diffusealpha(base)
+					end
+				end
+				)
+			end
+		end
+	)
+	self:SetUpdateFunctionInterval(0.025)
+	if clickaction then
+		self:RunCommandsOnChildren(
+			function(self) 
+				self:addcommand("LeftClickMessage", clickaction)
+			end
+		)
+	end
+end
+
+local translated_info = {
+	Title = THEME:GetString("ScreenSelectProfile", "Title"),
+	SongPlayed = THEME:GetString("ScreenSelectProfile", "SongPlayed"),
+	SongsPlayed = THEME:GetString("ScreenSelectProfile", "SongsPlayed"),
+	NoProfile = THEME:GetString("GeneralInfo", "NoProfile"),
+	PressStart = THEME:GetString("ScreenSelectProfile", "PressStartToJoin")
+}
 
 function GetLocalProfiles()
 	local t = {}
@@ -8,11 +47,15 @@ function GetLocalProfiles()
 		local profile = PROFILEMAN:GetLocalProfileFromIndex(p)
 		local ProfileCard =
 			Def.ActorFrame {
+				Name = p,
+				InitCommand = function(self) 
+					genericHighlight(self, 0.75, 1, selectprofile)
+				end,
 			LoadFont("Common Large") ..
 				{
 					Text = string.format("%s: %.2f", profile:GetDisplayName(), profile:GetPlayerRating()),
 					InitCommand = function(self)
-						self:xy(34 / 2, -10):zoom(0.4):ztest(true, maxwidth, (200 - 34 - 4) / 0.4)
+						self:xy(34 / 2, -10):zoom(0.4):ztest(true, maxwidth, (200 - 34 - 4) / 0.4)	
 					end
 				},
 			LoadFont("Common Normal") ..
@@ -22,9 +65,9 @@ function GetLocalProfiles()
 					end,
 					BeginCommand = function(self)
 						local numSongsPlayed = profile:GetNumTotalSongsPlayed()
-						local s = numSongsPlayed == 1 and "Song" or "Songs"
+						local s = numSongsPlayed == 1 and translated_info["SongPlayed"] or translated_info["SongsPlayed"]
 						-- todo: localize
-						self:settext(numSongsPlayed .. " " .. s .. " Played")
+						self:settext(numSongsPlayed .. " " .. s)
 					end
 				},
 			Def.Sprite {
@@ -36,7 +79,7 @@ function GetLocalProfiles()
 				end,
 				ModifyAvatarCommand = function(self)
 					self:finishtweening()
-					self:Load(getAvatarPath(PLAYER_1))
+					self:Load(getAssetPathFromProfileID("avatar", profileID))
 					self:zoomto(30, 30)
 				end
 			}
@@ -80,7 +123,7 @@ function LoadPlayerStuff(Player)
 		LoadCard(Color("Purple")),
 		LoadFont("Common Normal") ..
 			{
-				Text = "Press &START; to join.",
+				Text = translated_info["PressStart"],
 				InitCommand = function(self)
 					self:shadowlength(1)
 				end,
@@ -151,9 +194,8 @@ function UpdateInternal3(self, Player)
 	local smallframe = frame:GetChild("SmallFrame")
 	local bigframe = frame:GetChild("BigFrame")
 
-	if GAMESTATE:IsHumanPlayer(Player) then
+	if GAMESTATE:IsHumanPlayer() then
 		frame:visible(true)
-		if MEMCARDMAN:GetCardState(Player) == "MemoryCardState_none" then
 			--using profile if any
 			joinframe:visible(false)
 			smallframe:visible(true)
@@ -173,16 +215,9 @@ function UpdateInternal3(self, Player)
 					smallframe:visible(false)
 					bigframe:visible(false)
 					scroller:visible(false)
-					seltext:settext("No profile")
+					seltext:settext(translated_info["NoProfile"])
 				end
 			end
-		else
-			--using card
-			smallframe:visible(false)
-			scroller:visible(false)
-			seltext:settext("CARD")
-			SCREENMAN:GetTopScreen():SetProfileIndex(Player, 0)
-		end
 	else
 		joinframe:visible(true)
 		scroller:visible(false)
@@ -199,45 +234,41 @@ t[#t + 1] =
 	StorageDevicesChangedMessageCommand = function(self, params)
 		self:queuecommand("UpdateInternal2")
 	end,
-	CodeMessageCommand = function(self, params)
-		if params.Name == "Start" or params.Name == "Center" then
-			MESSAGEMAN:Broadcast("StartButton")
-			if not GAMESTATE:IsHumanPlayer(params.PlayerNumber) then
-				SCREENMAN:GetTopScreen():SetProfileIndex(params.PlayerNumber, -1)
-			else
-				SCREENMAN:GetTopScreen():Finish()
-			end
-		end
-		if params.Name == "Up" or params.Name == "Up2" or params.Name == "DownLeft" then
-			if GAMESTATE:IsHumanPlayer(params.PlayerNumber) then
-				local ind = SCREENMAN:GetTopScreen():GetProfileIndex(params.PlayerNumber)
-				if ind > 1 then
-					if SCREENMAN:GetTopScreen():SetProfileIndex(params.PlayerNumber, ind - 1) then
-						MESSAGEMAN:Broadcast("DirectionButton")
-						self:queuecommand("UpdateInternal2")
+	BeginCommand = function(self)
+		SCREENMAN:GetTopScreen():AddInputCallback(function(event)
+			if event.type == "InputEventType_FirstPress" then
+				if event.button == "Start" then
+					MESSAGEMAN:Broadcast("StartButton")
+					if not GAMESTATE:IsHumanPlayer() then
+						SCREENMAN:GetTopScreen():SetProfileIndex(PLAYER_1, -1)
+					else
+						SCREENMAN:GetTopScreen():Finish()
 					end
+				elseif event.button == "MenuUp"  or event.button == "Up" then
+					if GAMESTATE:IsHumanPlayer() then
+						local ind = SCREENMAN:GetTopScreen():GetProfileIndex(PLAYER_1)
+						if ind > 1 then
+							if SCREENMAN:GetTopScreen():SetProfileIndex(PLAYER_1, ind - 1) then
+								MESSAGEMAN:Broadcast("DirectionButton")
+								self:queuecommand("UpdateInternal2")
+							end
+						end
+					end
+				elseif event.button == "MenuDown" or event.button == "Down" then
+					if GAMESTATE:IsHumanPlayer() then
+						local ind = SCREENMAN:GetTopScreen():GetProfileIndex(PLAYER_1)
+						if ind > 0 then
+							if SCREENMAN:GetTopScreen():SetProfileIndex(PLAYER_1, ind + 1) then
+								MESSAGEMAN:Broadcast("DirectionButton")
+								self:queuecommand("UpdateInternal2")
+							end
+						end
+					end
+				elseif event.button == "Back" then
+					SCREENMAN:GetTopScreen():Cancel()
 				end
 			end
-		end
-		if params.Name == "Down" or params.Name == "Down2" or params.Name == "DownRight" then
-			if GAMESTATE:IsHumanPlayer(params.PlayerNumber) then
-				local ind = SCREENMAN:GetTopScreen():GetProfileIndex(params.PlayerNumber)
-				if ind > 0 then
-					if SCREENMAN:GetTopScreen():SetProfileIndex(params.PlayerNumber, ind + 1) then
-						MESSAGEMAN:Broadcast("DirectionButton")
-						self:queuecommand("UpdateInternal2")
-					end
-				end
-			end
-		end
-		if params.Name == "Back" then
-			if GAMESTATE:GetNumPlayersEnabled() == 0 then
-				SCREENMAN:GetTopScreen():Cancel()
-			else
-				MESSAGEMAN:Broadcast("BackButton")
-				SCREENMAN:GetTopScreen():SetProfileIndex(params.PlayerNumber, -2)
-			end
-		end
+		end)
 	end,
 	PlayerJoinedMessageCommand = function(self, params)
 		self:queuecommand("UpdateInternal2")
@@ -296,7 +327,8 @@ t[#t + 1] =
 	LoadFont("Common Large") ..
 	{
 		InitCommand = function(self)
-			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("positive")):settext("Select Profile:")
+			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("positive"))
+			self:settextf("%s:", translated_info["Title"])
 		end
 	}
 

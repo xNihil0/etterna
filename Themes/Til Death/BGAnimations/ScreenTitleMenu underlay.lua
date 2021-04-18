@@ -1,3 +1,7 @@
+if IsSMOnlineLoggedIn() then
+	CloseConnection()
+end
+
 local function input(event) -- for update button
 	if event.type ~= "InputEventType_Release" then
 		if event.DeviceInput.button == "DeviceButton_left mouse button" then
@@ -23,7 +27,7 @@ local frameY = THEME:GetMetric("ScreenTitleMenu", "ScrollerY")
 t[#t + 1] =
 	Def.Quad {
 	InitCommand = function(self)
-		self:xy(0, 0):halign(0):valign(0):zoomto(250, 900):diffuse(color("#161515")):diffusealpha(1)
+		self:xy(0, 0):halign(0):valign(0):zoomto(250, 900):diffuse(getTitleColor('BG_Left')):diffusealpha(1)
 	end
 }
 
@@ -31,7 +35,7 @@ t[#t + 1] =
 t[#t + 1] =
 	Def.Quad {
 	InitCommand = function(self)
-		self:xy(250, 0):halign(0):valign(0):zoomto(1000, 900):diffuse(color("#222222")):diffusealpha(1)
+		self:xy(250, 0):halign(0):valign(0):zoomto(1000, 900):diffuse(getTitleColor('BG_Right')):diffusealpha(1)
 	end
 }
 
@@ -39,7 +43,7 @@ t[#t + 1] =
 t[#t + 1] =
 	Def.Quad {
 	InitCommand = function(self)
-		self:xy(250, 0):halign(0):valign(0):zoomto(10, 900):diffuse(color("#b87cf0")):diffusealpha(1)
+		self:xy(250, 0):halign(0):valign(0):zoomto(10, 900):diffuse(getTitleColor('Line_Left')):diffusealpha(1)
 	end
 }
 
@@ -47,24 +51,37 @@ t[#t + 1] =
 t[#t + 1] =
 	Def.Quad {
 	InitCommand = function(self)
-		self:xy(260, 0):halign(0):valign(0):zoomto(10, 900):diffuse(color("#59307f")):diffusealpha(1)
+		self:xy(260, 0):halign(0):valign(0):zoomto(10, 900):diffuse(getTitleColor('Line_Right')):diffusealpha(1)
 	end
 }
 
+--Title text
 t[#t + 1] =
 	LoadFont("Common Large") ..
 	{
-		InitCommand = function(self)
-			self:xy(42, frameY - 62):zoom(0.65):valign(1):halign(0):diffuse(color("#b87cf0"))
+		InitCommand=function(self)
+			self:xy(75,frameY-82):zoom(0.65):valign(1):halign(0):diffuse(getMainColor('positive'))
 		end,
-		OnCommand = function(self)
-			self:settext(getThemeName())
+		OnCommand=function(self)
+			self:settext("Etterna")
 		end
-	}
+}
+
+--Theme text
+t[#t + 1] =
+	LoadFont("Common Normal") .. 
+	{
+		InitCommand=function(self)
+			self:xy(95,frameY-52):zoom(0.65):valign(1):halign(0):diffuse(getMainColor('positive'))
+		end,
+		OnCommand=function(self)
+		self:settext(getThemeName())
+		end
+}
 
 -- lazy game update button -mina
 local gameneedsupdating = false
-local buttons = {x = 22, y = 40, width = 140, height = 36, fontScale = 0.3, color = getMainColor("frames")}
+local buttons = {x = 122, y = 40, width = 140, height = 36, fontScale = 0.3, color = getMainColor("frames")}
 t[#t + 1] =
 	Def.Quad {
 	InitCommand = function(self)
@@ -95,7 +112,7 @@ t[#t + 1] =
 		OnCommand = function(self)
 			self:xy(buttons.x + 3, buttons.y + 14):halign(1):zoom(buttons.fontScale):diffuse(getMainColor("positive"))
 			if gameneedsupdating then
-				self:settext("Update Available\nClick to Update")
+				self:settext(THEME:GetString("ScreenTitleMenu", "UpdateAvailable"))
 			else
 				self:settext("")
 			end
@@ -137,9 +154,10 @@ for i = 1, choiceCount do
 			if (isOver(self)) then
 				SCREENMAN:GetTopScreen():playcommand("MadeChoicePlayer_1")
 				SCREENMAN:GetTopScreen():playcommand("Choose")
-				if choices[i] ~= "Multi" and choices[i] ~= "GameStart" then -- for some reason multi gets stuck :/
-					GAMESTATE:ApplyGameCommand(THEME:GetMetric("ScreenTitleMenu", "Choice" .. choices[i]))
+				if choices[i] == "Multi" or choices[i] == "GameStart" then
+					GAMESTATE:JoinPlayer()
 				end
+				GAMESTATE:ApplyGameCommand(THEME:GetMetric("ScreenTitleMenu", "Choice" .. choices[i]))
 			end
 		end
 	}

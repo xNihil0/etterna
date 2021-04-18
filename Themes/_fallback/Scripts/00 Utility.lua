@@ -34,81 +34,25 @@ function isWindowed()
 end
 
 --- Get the actor's real X (Not relative to the parent like self:GetX()) by recursively grabbing the parents' position
--- Does not take zoom into account.
 -- @tparam actor element the actor
 -- @treturn number
 function getTrueX(element)
-	if element == nil then
-		return 0
-	end
-	if element:GetParent() == nil then
-		return element:GetX() or 0
-	else
-		return element:GetX() + getTrueX(element:GetParent())
-	end
+	element:GetTrueX()
 end
 
 --- Get the actor's real Y (Not relative to the parent like self:GetY()) by recursively grabbing the parents' position
--- Does not take zoom into account.
 -- @tparam actor element the actor
 -- @treturn number
 function getTrueY(element)
-	if element == nil then
-		return 0
-	end
-	if element:GetParent() == nil then
-		return element:GetY() or 0
-	else
-		return element:GetY() + getTrueY(element:GetParent())
-	end
+	element:GetTrueY()
 end
 
 --- Checks whether the mouse is over an actor
 -- @tparam actor element the actor
 -- @treturn bool true if the mouse is over the actor
 function isOver(element)
-	--[[
-	if element:GetVisible() == false then
-		return false
-	end;
-	--]]
-	local x = getTrueX(element)
-	local y = getTrueY(element)
-	local hAlign = element:GetHAlign()
-	local vAlign = element:GetVAlign()
-	local w = element:GetZoomedWidth()
-	local h = element:GetZoomedHeight()
-
 	local mouse = getMousePosition()
-
-	local withinX = (mouse.x >= (x - (hAlign * w))) and (mouse.x <= ((x + w) - (hAlign * w)))
-	local withinY = (mouse.y >= (y - (vAlign * h))) and (mouse.y <= ((y + h) - (vAlign * h)))
-
-	return (withinX and withinY)
-end
-
---- For when its just wrong and you need to control the scale yourself
--- @tparam actor element the actor
--- @number scale Multiplier
--- @treturn bool true if the mouse is over the actor
-function isOverScaled(element, scale)
-	if not scale then
-		scale = 1
-	end
-	local x = getTrueX(element)
-	local y = getTrueY(element)
-	local hAlign = element:GetHAlign()
-	local vAlign = element:GetVAlign()
-	local w = element:GetZoomedWidth() * scale
-	local h = element:GetZoomedHeight() * scale
-
-	local mouseX = INPUTFILTER:GetMouseX()
-	local mouseY = INPUTFILTER:GetMouseY()
-
-	local withinX = (mouseX >= (x - (hAlign * w))) and (mouseX <= ((x + w) - (hAlign * w)))
-	local withinY = (mouseY >= (y - (vAlign * h))) and (mouseY <= ((y + h) - (vAlign * h)))
-
-	return (withinX and withinY)
+	return element:IsOver(mouse.x, mouse.y)
 end
 
 --- returns true if the table contains the key.
@@ -245,7 +189,7 @@ function getNoteFieldScale(pn_old_deprecated)
 		return 0
 	end
 	local pn = PLAYER_1
-	local po = GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred")
+	local po = GAMESTATE:GetPlayerState():GetPlayerOptions("ModsLevel_Preferred")
 	local val, as = po:Mini()
 	local zoom = 1
 	zoom = 1 - (val * 0.5)
@@ -343,17 +287,36 @@ function getBPMChangeCount(bpmChanges)
 	return count
 end
 --- Returns a string of the form "(KeyCount)K" like "4K"
--- Uses GAMESTATE:GetCurrentSteps(PLAYER_1):GetStepsType()
+-- Uses GAMESTATE:GetCurrentSteps():GetStepsType()
 -- @treturn string keymode
 function getCurrentKeyMode()
 	local keys = {
+		StepsType_Dance_Threepanel = "3K",
 		StepsType_Dance_Single = "4K",
 		StepsType_Pump_Single = "5K",
+		StepsType_Pnm_Five = "5K",
+		StepsType_Pump_Halfdouble = "6K",
+		StepsType_Bm_Single5 = "6K",
 		StepsType_Dance_Solo = "6K",
 		StepsType_Kb7_Single = "7K",
+		StepsType_Bm_Single7 = "8K",
 		StepsType_Dance_Double = "8K",
-		StepsType_Dance_Couple = "8K"
+		StepsType_Pnm_Nine = "9K",
+		StepsType_Pump_Double = "10K",
+		StepsType_Bm_Double5 = "12K",
+		StepsType_Bm_Double7 = "16K",
 	}
-	local stepstype = GAMESTATE:GetCurrentSteps(PLAYER_1):GetStepsType()
+	local stepstype = GAMESTATE:GetCurrentSteps():GetStepsType()
 	return keys[stepstype]
+end
+
+--- Returns translated modifiers given a raw string of modifiers
+-- @tparam {string} raw string of modifiers
+-- @treturn {string} translated string of modifiers
+function getModifierTranslations(source)
+	local translated = {}
+	for mod in string.gmatch(source, "[^,%s]+") do
+		table.insert(translated, THEME:HasString("OptionNames", mod) and THEME:GetString("OptionNames", mod) or mod)
+	end
+	return table.concat(translated, ", ")
 end

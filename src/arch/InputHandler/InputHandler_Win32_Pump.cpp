@@ -1,10 +1,10 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "InputHandler_Win32_Pump.h"
 
-#include "PrefsManager.h"
-#include "RageLog.h"
-#include "RageUtil.h"
-#include "RageInputDevice.h"
+#include "Etterna/Singletons/PrefsManager.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Utils/RageUtil.h"
+#include "RageUtil/Misc/RageInputDevice.h"
 #include "archutils/Win32/ErrorStrings.h"
 #include "archutils/Win32/USB.h"
 
@@ -29,7 +29,7 @@ InputHandler_Win32_Pump::InputHandler_Win32_Pump()
 			if (m_pDevice[i].Open(
 				  pump_usb_vid, pump_usb_pid, sizeof(long), i, NULL)) {
 				iNumFound++;
-				LOG->Info("Found Pump pad %i", iNumFound);
+				Locator::getLogger()->info("Found Pump pad {}", iNumFound);
 			}
 		}
 	}
@@ -45,9 +45,11 @@ InputHandler_Win32_Pump::~InputHandler_Win32_Pump()
 {
 	if (InputThread.IsCreated()) {
 		m_bShutdown = true;
-		LOG->Trace("Shutting down Pump thread ...");
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->trace("Shutting down Pump thread ...");
 		InputThread.Wait();
-		LOG->Trace("Pump thread shut down.");
+		if (PREFSMAN->m_verbose_log > 1)
+			Locator::getLogger()->trace("Pump thread shut down.");
 	}
 
 	delete[] m_pDevice;
@@ -57,10 +59,10 @@ void
 InputHandler_Win32_Pump::HandleInput(int iDevice, int iEvent)
 {
 	static const int bits[] = {
-		/* P1 */ (1 << 9),   (1 << 12), (1 << 13),
+		/* P1 */ (1 << 9),	 (1 << 12), (1 << 13),
 		(1 << 11),			 (1 << 10),
 		/* ESC */ (1 << 16),
-		/* P1 */ (1 << 17),  (1 << 20), (1 << 21),
+		/* P1 */ (1 << 17),	 (1 << 20), (1 << 21),
 		(1 << 19),			 (1 << 18),
 	};
 
@@ -78,7 +80,7 @@ InputHandler_Win32_Pump::HandleInput(int iDevice, int iEvent)
 	}
 }
 
-RString
+std::string
 InputHandler_Win32_Pump::GetDeviceSpecificInputString(const DeviceInput& di)
 {
 	switch (di.button) {
@@ -132,8 +134,7 @@ void
 InputHandler_Win32_Pump::InputThreadMain()
 {
 	if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST))
-		LOG->Warn(
-		  werr_ssprintf(GetLastError(), "Failed to set Pump thread priority"));
+		Locator::getLogger()->warn(werr_ssprintf(GetLastError(), "Failed to set Pump thread priority"));
 
 	/* Enable priority boosting. */
 	SetThreadPriorityBoost(GetCurrentThread(), FALSE);
@@ -145,19 +146,16 @@ InputHandler_Win32_Pump::InputThreadMain()
 	}
 
 	while (!m_bShutdown) {
-		CHECKPOINT;
 		int iActual = 0, iVal = 0;
 		int iRet =
 		  WindowsFileIO::read_several(apSources, &iVal, iActual, 0.100f);
 
-		CHECKPOINT;
 		if (iRet <= 0)
 			continue; /* no event */
 
 		HandleInput(iActual, iVal);
 		InputHandler::UpdateTimer();
 	}
-	CHECKPOINT;
 }
 
 void

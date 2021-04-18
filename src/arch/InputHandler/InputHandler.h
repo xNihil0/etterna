@@ -16,13 +16,14 @@
  * completely distinct methods of getting input for the same device; we have no
  * method to allocate device numbers. We don't need this now; I'll write it
  * if it becomes needed.) */
-#include "RageInputDevice.h" // for InputDevice
+#include "RageUtil/Misc/RageInputDevice.h" // for InputDevice
 #include "arch/RageDriver.h"
 /** @brief A class designed to handle special input devices. */
 class InputHandler : public RageDriver
 {
   public:
-	static void Create(const RString& sDrivers, vector<InputHandler*>& apAdd);
+	static void Create(const std::string& sDrivers,
+					   vector<InputHandler*>& apAdd);
 	static DriverList m_pDriverList;
 
 	InputHandler()
@@ -37,9 +38,9 @@ class InputHandler : public RageDriver
 
 	// Override to return a pretty string that's specific to the controller
 	// type.
-	virtual RString GetDeviceSpecificInputString(const DeviceInput& di);
+	virtual std::string GetDeviceSpecificInputString(const DeviceInput& di);
 	static wchar_t ApplyKeyModifiers(wchar_t c);
-	virtual RString GetLocalizedInputString(const DeviceInput& di);
+	virtual std::string GetLocalizedInputString(const DeviceInput& di);
 	virtual wchar_t DeviceButtonToChar(DeviceButton button,
 									   bool bUseCurrentKeyModifiers);
 
@@ -89,30 +90,3 @@ class InputHandler : public RageDriver
 	REGISTER_INPUT_HANDLER_CLASS2(name, name)
 
 #endif
-
-/**
- * @file
- * @author Glenn Maynard (c) 2003-2004
- * @section LICENSE
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

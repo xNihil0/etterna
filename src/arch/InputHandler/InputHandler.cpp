@@ -1,11 +1,11 @@
-#include "global.h"
-#include "InputFilter.h"
-#include "RageUtil.h"
+#include "Etterna/Globals/global.h"
+#include "Etterna/Singletons/InputFilter.h"
+#include "RageUtil/Utils/RageUtil.h"
 #include "InputHandler.h"
-#include "RageLog.h"
-#include "LocalizedString.h"
+#include "Core/Services/Locator.hpp"
+#include "Etterna/Models/Misc/LocalizedString.h"
 #include "arch/arch_default.h"
-#include "Foreach.h"
+#include "Etterna/Models/Misc/Foreach.h"
 
 void
 InputHandler::UpdateTimer()
@@ -35,8 +35,7 @@ InputHandler::ButtonPressed(DeviceInput di)
 		 * counted; if the driver provides its own timestamps, UpdateTimer is
 		 * optional.
 		 */
-		LOG->Warn("InputHandler::ButtonPressed: Driver sent many updates "
-				  "without calling UpdateTimer");
+		Locator::getLogger()->warn("InputHandler::ButtonPressed: Driver sent many updates without calling UpdateTimer");
 		FAIL_M("x");
 	}
 }
@@ -62,9 +61,9 @@ InputHandler::ApplyKeyModifiers(wchar_t c)
 			case L'2':
 				c = L'@';
 				break;
-			case L'§':
+			/*case L'§':
 				c = L'±';
-				break;
+				break;*/    // what the fuck is this?
 			case L'3':
 				c = L'#';
 				break;
@@ -179,26 +178,26 @@ static LocalizedString PGUP("DeviceButton", "PgUp");
 static LocalizedString PGDN("DeviceButton", "PgDn");
 static LocalizedString BACKSLASH("DeviceButton", "Backslash");
 
-RString
+std::string
 InputHandler::GetDeviceSpecificInputString(const DeviceInput& di)
 {
 	if (di.device == InputDevice_Invalid)
-		return RString();
+		return std::string();
 
 	if (di.device == DEVICE_KEYBOARD) {
 		wchar_t c = DeviceButtonToChar(di.button, false);
 		if (c && c != L' ') // Don't show "Key  " for space.
 			return InputDeviceToString(di.device) + " " +
-				   Capitalize(WStringToRString(wstring() + c));
+				   Capitalize(WStringToString(std::wstring() + c));
 	}
 
-	RString s = DeviceButtonToString(di.button);
+	std::string s = DeviceButtonToString(di.button);
 	if (di.device != DEVICE_KEYBOARD)
 		s = InputDeviceToString(di.device) + " " + s;
 	return s;
 }
 
-RString
+std::string
 InputHandler::GetLocalizedInputString(const DeviceInput& di)
 {
 	switch (di.button) {
@@ -234,7 +233,7 @@ InputHandler::GetLocalizedInputString(const DeviceInput& di)
 		default:
 			wchar_t c = DeviceButtonToChar(di.button, false);
 			if (c && c != L' ') // Don't show "Key  " for space.
-				return Capitalize(WStringToRString(wstring() + c));
+				return Capitalize(WStringToString(std::wstring() + c));
 
 			return DeviceButtonToString(di.button);
 	}
@@ -245,21 +244,22 @@ DriverList InputHandler::m_pDriverList;
 static LocalizedString INPUT_HANDLERS_EMPTY("Arch",
 											"Input Handlers cannot be empty.");
 void
-InputHandler::Create(const RString& drivers_, vector<InputHandler*>& Add)
+InputHandler::Create(const std::string& drivers_, vector<InputHandler*>& Add)
 {
-	const RString drivers =
-	  drivers_.empty() ? RString(DEFAULT_INPUT_DRIVER_LIST) : drivers_;
-	vector<RString> DriversToTry;
+	const std::string drivers = drivers_.empty()
+								  ? std::string(DEFAULT_INPUT_DRIVER_LIST)
+								  : drivers_.c_str();
+	vector<std::string> DriversToTry;
 	split(drivers, ",", DriversToTry, true);
 
 	if (DriversToTry.empty())
 		RageException::Throw("%s", INPUT_HANDLERS_EMPTY.GetValue().c_str());
 
-	FOREACH_CONST(RString, DriversToTry, s)
+	FOREACH_CONST(std::string, DriversToTry, s)
 	{
 		RageDriver* pDriver = InputHandler::m_pDriverList.Create(*s);
 		if (pDriver == NULL) {
-			LOG->Trace("Unknown Input Handler name: %s", s->c_str());
+			Locator::getLogger()->trace("Unknown Input Handler name: {}", s->c_str());
 			continue;
 		}
 
@@ -268,28 +268,3 @@ InputHandler::Create(const RString& drivers_, vector<InputHandler*>& Add)
 		Add.push_back(ret);
 	}
 }
-
-/*
- * (c) 2003-2004 Glenn Maynard
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

@@ -4,21 +4,24 @@ local lockSpeedP1 = false
 
 local cover
 
-local laneColor = color("#333333")
+local laneColor = getLaneCoverColor("cover")
+local bpmColor = getLaneCoverColor("bpmText")
+local heightColor = getLaneCoverColor("heightText")
 
 local cols = GAMESTATE:GetCurrentStyle():ColumnsPerPlayer()
-local keymode = getCurrentKeyMode()
+local evencols = cols - cols%2
 local allowedCustomization = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).CustomizeGameplay
 
 local isCentered = ((cols >= 6) or PREFSMAN:GetPreference("Center1Player")) and GAMESTATE:GetNumPlayersEnabled() == 1
 -- load from prefs later
-local width = 64 * cols * playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplaySizes[keymode].NotefieldWidth
+local nfspace = MovableValues.NotefieldSpacing and MovableValues.NotefieldSpacing or 0
+local width = 64 * cols * MovableValues.NotefieldWidth + nfspace * (evencols)
 local padding = 8
 local styleType = ToEnumShortString(GAMESTATE:GetCurrentStyle():GetStyleType())
 
 local prefsP1 = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).LaneCover
-local enabledP1 = prefsP1 ~= 0 and GAMESTATE:IsPlayerEnabled(PLAYER_1)
-local isReverseP1 = GAMESTATE:GetPlayerState(PLAYER_1):GetCurrentPlayerOptions():UsingReverse()
+local enabledP1 = prefsP1 ~= 0 and GAMESTATE:IsPlayerEnabled()
+local isReverseP1 = GAMESTATE:GetPlayerState():GetCurrentPlayerOptions():UsingReverse()
 if prefsP1 == 2 then -- it's a Hidden LaneCover
 	isReverseP1 = not isReverseP1
 end
@@ -26,7 +29,7 @@ end
 local heightP1 = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).LaneCoverHeight
 
 local P1X =
-	SCREEN_CENTER_X + playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplayXYCoordinates[keymode].NotefieldX
+	SCREEN_CENTER_X + MovableValues.NotefieldX + (cols % 2 == 0 and -nfspace / 2 or 0)
 
 if not isCentered then
 	P1X = THEME:GetMetric("ScreenGameplay", string.format("PlayerP1%sX", styleType))
@@ -34,7 +37,7 @@ end
 
 local function getPlayerBPM(pn)
 	local pn = GAMESTATE:GetMasterPlayerNumber()
-	local songPosition = GAMESTATE:GetPlayerState(pn):GetSongPosition()
+	local songPosition = GAMESTATE:GetPlayerState():GetSongPosition()
 	local ts = SCREENMAN:GetTopScreen()
 	local bpm = 0
 	if ts:GetScreenType() == "ScreenType_Gameplay" then
@@ -43,10 +46,9 @@ local function getPlayerBPM(pn)
 	return bpm
 end
 
-local function getMaxDisplayBPM(pn)
-	local pn = GAMESTATE:GetMasterPlayerNumber()
+local function getMaxDisplayBPM()
 	local song = GAMESTATE:GetCurrentSong()
-	local steps = GAMESTATE:GetCurrentSteps(pn)
+	local steps = GAMESTATE:GetCurrentSteps()
 	if steps:GetDisplayBPMType() ~= "DisplayBPM_Random" then
 		return steps:GetDisplayBpms()[2]
 	else
@@ -55,13 +57,13 @@ local function getMaxDisplayBPM(pn)
 end
 
 local function getSpeed(pn)
-	local po = GAMESTATE:GetPlayerState(pn):GetPlayerOptions("ModsLevel_Preferred")
+	local po = GAMESTATE:GetPlayerState():GetPlayerOptions("ModsLevel_Preferred")
 	if po:XMod() ~= nil then
 		return po:XMod() * getPlayerBPM(pn)
 	elseif po:CMod() ~= nil then
 		return po:CMod()
 	elseif po:MMod() ~= nil then
-		return po:MMod() * (getPlayerBPM(pn) / getMaxDisplayBPM(pn))
+		return po:MMod() * (getPlayerBPM(pn) / getMaxDisplayBPM())
 	else
 		return getPlayerBPM(pn)
 	end
@@ -71,7 +73,7 @@ local yoffsetreverse = THEME:GetMetric("Player", "ReceptorArrowsYReverse")
 local yoffsetstandard = THEME:GetMetric("Player", "ReceptorArrowsYStandard")
 
 local function getNoteFieldHeight(pn)
-	local usingreverse = GAMESTATE:GetPlayerState(pn):GetCurrentPlayerOptions():UsingReverse()
+	local usingreverse = GAMESTATE:GetPlayerState():GetCurrentPlayerOptions():UsingReverse()
 	if usingreverse then
 		return SCREEN_CENTER_Y + yoffsetreverse
 	else
@@ -100,15 +102,11 @@ local function getIIDXGreenNumber(pn, LaneCoverHeight)
 		((getSpeed(pn) / getPlayerBPM(pn)) * getPlayerBPM(pn))
 end
 
+local selectPressed = false
+local skibby = nil
 local function input(event)
 	if getAutoplay() ~= 0 and playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).LaneCover ~= 0 then
-		if event.DeviceInput.button == "DeviceButton_r" then
-			rPressed = not (event.type == "InputEventType_Release")
-		end
-		if event.DeviceInput.button == "DeviceButton_t" then
-			tPressed = not (event.type == "InputEventType_Release")
-		end
-		if rPressed and event.type ~= "InputEventType_Release" then
+		if Movable.current == "DeviceButton_r" and event.type ~= "InputEventType_Release" then
 			if event.DeviceInput.button == "DeviceButton_left" then
 				cover:addx(-3)
 			end
@@ -116,15 +114,50 @@ local function input(event)
 				cover:addx(3)
 			end
 		end
-		if tPressed and event.type ~= "InputEventType_Release" then
+		if Movable.current == "DeviceButton_t" and event.type ~= "InputEventType_Release" then
 			if event.DeviceInput.button == "DeviceButton_left" then
-				width = 64 * cols * playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplaySizes[keymode].NotefieldWidth - 0.01
+				width = 64 * cols * MovableValues.NotefieldWidth - 0.01 + MovableValues.NotefieldSpacing * (cols-1)
+				local dir = event.DeviceInput.button
+				local inc = Movable.DeviceButton_t[dir].inc
+				P1X = P1X + inc
 				cover:playcommand("Update")
 			end
 			if event.DeviceInput.button == "DeviceButton_right" then
-				width = 64 * cols * playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplaySizes[keymode].NotefieldWidth + 0.01
+				width = 64 * cols * MovableValues.NotefieldWidth + 0.01 + MovableValues.NotefieldSpacing * (cols-1)
+				local dir = event.DeviceInput.button
+				local inc = Movable.DeviceButton_t[dir].inc
+				P1X = P1X + inc
 				cover:playcommand("Update")
 			end
+		end
+		if Movable.current == "DeviceButton_n" and event.type ~= "InputEventType_Release" then
+			if event.DeviceInput.button == "DeviceButton_up" or event.DeviceInput.button == "DeviceButton_down" then
+				local dir = event.DeviceInput.button
+				local inc = Movable.DeviceButton_n[dir].inc
+				width = width + inc * evencols
+				P1X = P1X - inc / evencols
+				cover:playcommand("Update")
+			end
+		end
+	end
+	if event.type == "InputEventType_Release" then
+		moveDownP1 = false
+		moveUpP1 = false
+		if event.button == "Select" then
+			selectPressed = false
+		end
+	end
+	if event.type == "InputEventType_FirstPress" then
+		if event.button == "EffectUp" and selectPressed then
+			moveDownP1 = false
+			moveUpP1 = true
+			skibby:playcommand("SavePrefs")
+		elseif event.button == "EffectDown" and selectPressed then
+			moveDownP1 = true
+			moveUpP1 = false
+			skibby:playcommand("SavePrefs")
+		elseif event.button == "Select" then
+			selectPressed = true
 		end
 	end
 	return false
@@ -132,22 +165,6 @@ end
 
 local t =
 	Def.ActorFrame {
-	CodeMessageCommand = function(self, params)
-		moveDownP1 = false
-		moveUpP1 = false
-		local doot = heightP1
-		if params.PlayerNumber == PLAYER_1 then
-			if params.Name == "LaneUp" then
-				moveUpP1 = true
-			elseif params.Name == "LaneDown" then
-				moveDownP1 = true
-			else
-				moveDownP1 = false
-				moveUpP1 = false
-			end
-			self:playcommand("SavePrefs")
-		end
-	end,
 	SavePrefsCommand = function(self)
 		if enabledP1 then
 			playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).LaneCoverHeight = heightP1
@@ -155,7 +172,8 @@ local t =
 			playerConfig:save(pn_to_profile_slot(PLAYER_1))
 		end
 	end,
-	OnCommand = function()
+	OnCommand = function(self)
+		skibby = self
 		if (allowedCustomization) then
 			SCREENMAN:GetTopScreen():AddInputCallback(input)
 		end
@@ -182,7 +200,6 @@ if enabledP1 then
 			end
 		end,
 		UpdateCommand = function(self)
-			P1X = SCREEN_CENTER_X + playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplayXYCoordinates[keymode].NotefieldX
 			if isReverseP1 then
 				self:xy(P1X, SCREEN_TOP):zoomto((width + padding) * getNoteFieldScale(PLAYER_1), heightP1):valign(0):diffuse(
 					laneColor
@@ -205,7 +222,7 @@ if enabledP1 then
 		{
 			Name = "CoverTextP1White",
 			InitCommand = function(self)
-				self:x(P1X - (width * getNoteFieldScale(PLAYER_1) / 8)):settext(0):valign(1):zoom(0.5)
+				self:x(P1X - (width * getNoteFieldScale(PLAYER_1) / 8)):settext(0):valign(1):zoom(0.5):diffuse(heightColor)
 			end,
 			BeginCommand = function(self)
 				self:settext(0)
@@ -228,7 +245,7 @@ if enabledP1 then
 		{
 			Name = "CoverTextP1Green",
 			InitCommand = function(self)
-				self:x(P1X + (width * getNoteFieldScale(PLAYER_1) / 8)):settext(0):valign(1):zoom(0.5):diffuse(color("#4CBB17"))
+				self:x(P1X + (width * getNoteFieldScale(PLAYER_1) / 8)):settext(0):valign(1):zoom(0.5):diffuse(bpmColor)
 			end,
 			BeginCommand = function(self)
 				self:settext(math.floor(getSpeed(PLAYER_1)))
@@ -254,7 +271,6 @@ local function Update(self)
 	end
 	self:SetUpdateRate(5)
 	if enabledP1 then
-		P1X = SCREEN_CENTER_X + playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplayXYCoordinates[keymode].NotefieldX
 
 		if moveDownP1 then
 			if isReverseP1 then
@@ -300,8 +316,10 @@ local function Update(self)
 		end
 	end
 end
-t.InitCommand = function(self)
-	self:SetUpdateFunction(Update)
+if allowedCustomization then
+	t.InitCommand = function(self)
+		self:SetUpdateFunction(Update)
+	end
 end
 
 return t

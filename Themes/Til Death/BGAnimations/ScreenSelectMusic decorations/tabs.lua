@@ -9,17 +9,27 @@ local function input(event)
 		if numericinputactive == false then
 			if
 				not (INPUTFILTER:IsBeingPressed("left ctrl") or INPUTFILTER:IsBeingPressed("right ctrl") or
-					(SCREENMAN:GetTopScreen():GetName() ~= "ScreenSelectMusic"))
+					(SCREENMAN:GetTopScreen():GetName() ~= "ScreenSelectMusic" and
+					 SCREENMAN:GetTopScreen():GetName() ~= "ScreenNetSelectMusic"))
 			 then
 				if event.DeviceInput.button == "DeviceButton_0" then
+					local tind = getTabIndex()
+					-- if on the search tab dont let them press 0 if currently holding shift...
+					-- prevents attempting to enter ')' causing page change
+					-- (HACK) (HACK) (HACK) (HACK) (HACK) (HACK) (HACK) (HACK) (HACK) (HACK)
+					if tind == 3 and (INPUTFILTER:IsBeingPressed("left shift") or INPUTFILTER:IsBeingPressed("right shift")) then
+						return false
+					end
+
 					setTabIndex(9)
-					MESSAGEMAN:Broadcast("TabChanged")
+					MESSAGEMAN:Broadcast("TabChanged", {from = tind, to = 9})
 				else
 					for i = 1, #tabNames do
 						local numpad = event.DeviceInput.button == "DeviceButton_KP "..event.char	-- explicitly ignore numpad inputs for tab swapping (doesn't care about numlock) -mina
 						if not numpad and event.char and tonumber(event.char) and tonumber(event.char) == i then
+							local tind = getTabIndex()
 							setTabIndex(i - 1)
-							MESSAGEMAN:Broadcast("TabChanged")
+							MESSAGEMAN:Broadcast("TabChanged", {from = tind, to = i-1})
 						end
 					end
 				end
@@ -31,6 +41,7 @@ end
 local t =
 	Def.ActorFrame {
 	BeginCommand = function(self)
+		SCREENMAN:GetTopScreen():AddInputCallback(MPinput)
 		SCREENMAN:GetTopScreen():AddInputCallback(input)
 		resetTabIndex()
 	end,
@@ -81,8 +92,9 @@ function tabs(index)
 		end,
 		MouseLeftClickMessageCommand = function(self)
 			if isOver(self) then
+				local tind = getTabIndex()
 				setTabIndex(index - 1)
-				MESSAGEMAN:Broadcast("TabChanged")
+				MESSAGEMAN:Broadcast("TabChanged", {from = tind, to = index - 1})
 			end
 		end
 	}
@@ -97,7 +109,7 @@ function tabs(index)
 				self:queuecommand("Set")
 			end,
 			SetCommand = function(self)
-				self:settext(tabNames[index])
+				self:settext(THEME:GetString("TabNames", tabNames[index]))
 				if isTabEnabled(index) then
 					if index == 6 and FILTERMAN:AnyActiveFilter() then
 						self:diffuse(color("#cc2929"))

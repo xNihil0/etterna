@@ -118,16 +118,11 @@ function getScoreFromTable(hsTable, index)
 	return hsTable[index]
 end
 
-function getScoreFromPn(pn, index)
-	local hsTable = getScoreList(pn)
-	return getScore(hsTable, index)
-end
-
 function getMaxNotes(pn)
 	local song = GAMESTATE:GetCurrentSong()
 	local steps
-	if GAMESTATE:IsPlayerEnabled(pn) then
-		steps = GAMESTATE:GetCurrentSteps(pn)
+	if GAMESTATE:IsPlayerEnabled() then
+		steps = GAMESTATE:GetCurrentSteps()
 		if steps ~= nil then
 			if GAMESTATE:GetCurrentGame():CountNotesSeparately() then
 				return steps:GetRadarValues(pn):GetValue("RadarCategory_Notes") or 0
@@ -142,8 +137,8 @@ end
 function getMaxHolds(pn)
 	local song = GAMESTATE:GetCurrentSong()
 	local steps
-	if GAMESTATE:IsPlayerEnabled(pn) then
-		steps = GAMESTATE:GetCurrentSteps(pn)
+	if GAMESTATE:IsPlayerEnabled() then
+		steps = GAMESTATE:GetCurrentSteps()
 		if steps ~= nil then
 			return (steps:GetRadarValues(pn):GetValue("RadarCategory_Holds") +
 				steps:GetRadarValues(pn):GetValue("RadarCategory_Rolls")) or 0
@@ -185,16 +180,36 @@ function getGradeThreshold(pn, grade)
 	end
 end
 
+function getGradeFamilyForMidGrade(grade)
+	if grade == "Grade_Tier02" or grade == "Grade_Tier03" or grade == "Grade_Tier04" then
+		-- quads
+		return "Grade_Tier04"
+	elseif grade == "Grade_Tier05" or grade == "Grade_Tier06" or grade == "Grade_Tier07" then
+		return "Grade_Tier07"
+		-- triples
+	elseif grade == "Grade_Tier08" or grade == "Grade_Tier09" or grade == "Grade_Tier10" then
+		-- doubles
+		return "Grade_Tier10"
+	elseif grade == "Grade_Tier11" or grade == "Grade_Tier12" or grade == "Grade_Tier13" then
+		-- singles
+		return "Grade_Tier13"
+	else
+		-- quint and others
+		return grade
+	end
+end
+
 function getNearbyGrade(pn, DPScore, grade)
 	local nextGrade
 	local gradeScore = 0
 	local nextGradeScore = 0
-	if grade == "Grade_Tier01" or grade == "Grade_Tier02" then
+
+	if grade == "Grade_Tier01" or grade == "Grade_Tier02" or grade == "Grade_Tier03" or grade == "Grade_Tier04" then
 		return grade, 0
 	elseif grade == "Grade_Failed" then
-		return "Grade_Tier07", DPScore
+		return "Grade_Tier16", DPScore
 	elseif grade == "Grade_None" then
-		return "Grade_Tier07", 0
+		return "Grade_Tier16", 0
 	else
 		nextGrade = string.format("Grade_Tier%02d", (tonumber(grade:sub(-2)) - 1))
 		gradeScore = getGradeThreshold(pn, grade)
@@ -213,7 +228,7 @@ end
 
 function getScoreGrade(score)
 	if score ~= nil then
-		return score:GetGrade()
+		return score:GetWifeGrade()
 	else
 		return "Grade_None"
 	end
@@ -359,9 +374,9 @@ function getScoresByKey(pn)
 	local song = GAMESTATE:GetCurrentSong()
 	local profile
 	local steps
-	if GAMESTATE:IsPlayerEnabled(pn) then
+	if GAMESTATE:IsPlayerEnabled() then
 		profile = GetPlayerOrMachineProfile(pn)
-		steps = GAMESTATE:GetCurrentSteps(pn)
+		steps = GAMESTATE:GetCurrentSteps()
 		if profile ~= nil and steps ~= nil and song ~= nil then
 			return SCOREMAN:GetScoresByKey(steps:GetChartKey())
 		end
@@ -407,20 +422,6 @@ function getUsedRates(rtTable)
 	return rates, initIndex
 end
 
-function getScoreList(pn)
-	local song = GAMESTATE:GetCurrentSong()
-	local profile
-	local steps
-	if GAMESTATE:IsPlayerEnabled(pn) then
-		profile = GetPlayerOrMachineProfile(pn)
-		steps = GAMESTATE:GetCurrentSteps(pn)
-		if profile ~= nil and steps ~= nil and song ~= nil then
-			return profile:GetHighScoreList(song, steps):GetHighScores()
-		end
-	end
-	return nil
-end
-
 function wife2(maxms, ts)
 	local avedeviation = 95 * ts
 	local y = 1 - (2 ^ (-1 * maxms * maxms / (avedeviation * avedeviation)))
@@ -428,8 +429,9 @@ function wife2(maxms, ts)
 	return (2 - -8) * (1 - y) + -8
 end
 
+-- For Window-based Scoring
 function getRescoredJudge(offsetVector, judgeScale, judge)
-	local tso = {1.50, 1.33, 1.16, 1.00, 0.84, 0.66, 0.50, 0.33, 0.20}
+	local tso = ms.JudgeScalers
 	local ts = tso[judgeScale]
 	local windows = {22.5, 45.0, 90.0, 135.0, 180.0, 500.0}
 	local lowerBound = judge > 1 and windows[judge - 1] * ts or -1.0
@@ -455,6 +457,7 @@ function getRescoredJudge(offsetVector, judgeScale, judge)
 	return judgeCount
 end
 
+-- For Window-based Scoring
 function getRescoredCustomJudge(offsetVector, windows, judge)
 	local lowerBound = judge > 1 and windows[judges[judge - 1]] or -1.0
 	local upperBound = windows[judges[judge]]
@@ -478,19 +481,21 @@ function getRescoredCustomJudge(offsetVector, windows, judge)
 	return judgeCount
 end
 
-function getRescoredWifeJudge(offsetVector, judgeScale, holdsMissed, minesHit, totalNotes)
-	local tso = {1.50, 1.33, 1.16, 1.00, 0.84, 0.66, 0.50, 0.33, 0.20}
+-- For Millisecond-based Scoring
+function getRescoredWifeJudge(judgeScale, rst)
+	local tso = ms.JudgeScalers
 	local ts = tso[judgeScale]
 	local p = 0.0
-	for i = 1, #offsetVector do
-		p = p + wife2(offsetVector[i], ts)
+	for i = 1, #rst["dvt"] do
+		p = p + wife2(rst["dvt"][i], ts)
 	end
-	p = p + (holdsMissed * -6)
-	p = p + (minesHit * -8)
-	return (p / (totalNotes * 2)) * 100.0
+	p = p + (rst["holdsMissed"] * -6)
+	p = p + (rst["minesHit"] * -8)
+	return (p / (rst["totalTaps"] * 2)) * 100.0
 end
 
-function getRescoredCustomPercentage(offsetVector, customWindows, totalHolds, holdsHit, minesHit, totalNotes)
+-- For Window-based Scoring
+function getRescoredCustomPercentage(customWindows, rst)
 	local p = 0.0
 	local weights = customWindows.judgeWeights
 	local windows = customWindows.judgeWindows
@@ -498,9 +503,173 @@ function getRescoredCustomPercentage(offsetVector, customWindows, totalHolds, ho
 	for i = 1, 6 do
 		p = p + (getRescoredCustomJudge(offsetVector, windows, i) * weights[judges[i]])
 	end
-	p = p + (holdsHit * weights.holdHit)
-	p = p + (holdsMissed * weights.holdMiss)
-	p = p + (minesHit * weights.mineHit)
-	p = p / ((totalNotes * weights.marv) + (totalHolds * weights.holdHit))
+	p = p + (holdsHit * rst["holdsHit"])
+	p = p + (holdsMissed * rst["holdsMissed"])
+	p = p + (minesHit * rst["minesHit"])
+	p = p / ((totalNotes * weights.marv) + (rst["totalHolds"] * weights.holdHit))
 	return p * 100.0
+end
+
+function GetDisplayScoreByFilter(perc, CurRate) -- moved from wifetwirl, displays the score for the current rate if there is one, 
+	local rtTable = getRateTable()				-- if not it looks for what might plausibly be your best by going down each rate
+	if not rtTable then
+		return nil
+	end
+
+	local rates = tableKeys(rtTable)
+	local scores, score
+
+	if CurRate then
+		local tmp = getCurRateString()
+		if tmp == "1x" then
+			tmp = "1.0x"
+		end
+		if tmp == "2x" then
+			tmp = "2.0x"
+		end
+		rates = {tmp}
+		if not rtTable[rates[1]] then
+			return nil
+		end
+	end
+
+	table.sort(
+		rates,
+		function(a, b)
+			a = a:gsub("x", "")
+			b = b:gsub("x", "")
+			return a < b
+		end
+	)
+	for i = #rates, 1, -1 do
+		scores = rtTable[rates[i]]
+		local bestscore = 0
+		local index
+
+		for ii = 1, #scores do
+			score = scores[ii]
+			if score:ConvertDpToWife() > bestscore then
+				index = ii
+				bestscore = score:ConvertDpToWife()
+			end
+		end
+
+		if index and scores[index]:GetWifeScore() == 0 and GetPercentDP(scores[index]) > perc * 100 then
+			return scores[index]
+		end
+
+		if bestscore > perc then
+			return scores[index]
+		end
+	end
+end
+
+function GetDisplayScore()	-- wrapper for above that prioritizes current rate's pb > any rate 90% > any rate 50% > any score any rate
+	local score
+	score = GetDisplayScoreByFilter(0, true)
+
+	if not score then
+		score = GetDisplayScoreByFilter(0.9, false)
+	end
+	if not score then
+		score = GetDisplayScoreByFilter(0.5, false)
+	end
+	if not score then
+		score = GetDisplayScoreByFilter(0, false)
+	end
+	return score
+end
+
+-- erf constants
+a1 =  0.254829592
+a2 = -0.284496736
+a3 =  1.421413741
+a4 = -1.453152027
+a5 =  1.061405429
+p  =  0.3275911
+
+
+function erf(x)
+    -- Save the sign of x
+    sign = 1
+    if x < 0 then
+        sign = -1
+    end
+    x = math.abs(x)
+
+    -- A&S formula 7.1.26
+    t = 1.0/(1.0 + p*x)
+    y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*math.exp(-x*x)
+
+    return sign*y
+end
+function wife3(maxms, ts, version)
+
+	local max_points = 2
+	local miss_weight = -5.5
+	local ridic = 5 * ts
+	local max_boo_weight = 180 * ts
+	local ts_pow = 0.75
+	local zero = 65 * (ts^ts_pow)
+	local power = 2.5
+	local dev = 22.7 * (ts^ts_pow)
+
+	-- case handling
+	if maxms <= ridic then			-- anything below this (judge scaled) threshold is counted as full pts
+		return max_points
+	elseif maxms <= zero then			-- ma/pa region, exponential
+			return max_points * erf((zero - maxms) / dev)
+	elseif maxms <= max_boo_weight then -- cb region, linear
+		return (maxms - zero) * miss_weight / (max_boo_weight - zero)
+	else							-- we can just set miss values manually
+		return miss_weight			-- technically the max boo is always 180 above j4 however this is immaterial to the
+	end								-- purpose of the scoring curve, which is to assign point values
+end
+
+-- holy shit this is fugly
+function getRescoredWife3Judge(version, judgeScale, rst)
+	local tso = ms.JudgeScalers
+	local ts = tso[judgeScale]
+	local p = 0.0
+	for i = 1, #rst["dvt"] do							-- wife2 does not require abs due to ^2 but this does
+		p = p + wife3(math.abs(rst["dvt"][i]), ts, version)	
+	end
+	p = p + (rst["holdsMissed"] * -4.5)
+	p = p + (rst["minesHit"] * -7)
+	return (p / (rst["totalTaps"] * 2)) * 100.0
+end
+
+-- convert midgrades to full grades to help cope with the midgrade preference
+function midgradeToGrade(grade)
+
+	local gradeTiers = {
+		Grade_Tier01 = 1,
+		Grade_Tier02 = 4,
+		Grade_Tier03 = 4,
+		Grade_Tier04 = 4,
+		Grade_Tier05 = 7,
+		Grade_Tier06 = 7,
+		Grade_Tier07 = 7,
+		Grade_Tier08 = 10,
+		Grade_Tier09 = 10,
+		Grade_Tier10 = 10,
+		Grade_Tier11 = 13,
+		Grade_Tier12 = 13,
+		Grade_Tier13 = 13,
+		Grade_Tier14 = 14,
+		Grade_Tier15 = 15,
+		Grade_Tier16 = 16,
+		Grade_Tier17 = 17,
+		Grade_Tier18 = 18,
+		Grade_Tier19 = 19,
+		Grade_Tier20 = 20,
+		Grade_Failed = 21
+	}
+	return gradeTiers[grade]
+end
+
+-- returns true if A is worth more than B
+-- (based on gradeTiers, A would have a smaller value)
+function compareGrades(a, b)
+	return gradeTiers[a] < gradeTiers[b]
 end

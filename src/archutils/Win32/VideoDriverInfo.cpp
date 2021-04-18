@@ -1,12 +1,12 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "VideoDriverInfo.h"
-#include "RageUtil.h"
-#include "RageLog.h"
+#include "RageUtil/Utils/RageUtil.h"
+#include "Core/Services/Locator.hpp"
 #include "RegistryAccess.h"
 #include <windows.h>
 
 // this will not work on 95 and NT because of EnumDisplayDevices
-RString
+std::string
 GetPrimaryVideoName()
 {
 	typedef BOOL(WINAPI *
@@ -16,22 +16,22 @@ GetPrimaryVideoName()
 
 	hInstUser32 = LoadLibrary("User32.DLL");
 	if (!hInstUser32)
-		return RString();
+		return std::string();
 
 	// VC6 don't have a stub to static link with, so link dynamically.
 	EnumDisplayDevices =
 	  (pfnEnumDisplayDevices)GetProcAddress(hInstUser32, "EnumDisplayDevicesA");
-	if (EnumDisplayDevices == NULL) {
+	if (EnumDisplayDevices == nullptr) {
 		FreeLibrary(hInstUser32);
-		return RString();
+		return std::string();
 	}
 
-	RString sPrimaryDeviceName;
+	std::string sPrimaryDeviceName;
 	for (int i = 0; true; ++i) {
 		DISPLAY_DEVICE dd;
 		ZERO(dd);
 		dd.cb = sizeof(dd);
-		if (!EnumDisplayDevices(NULL, i, &dd, 0))
+		if (!EnumDisplayDevices(nullptr, i, &dd, 0))
 			break;
 		if (dd.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
 			sPrimaryDeviceName = (char*)dd.DeviceString;
@@ -44,14 +44,14 @@ GetPrimaryVideoName()
 	return sPrimaryDeviceName;
 }
 
-RString
+std::string
 GetPrimaryVideoDriverName()
 {
-	RString sPrimaryDeviceName = GetPrimaryVideoName();
-	if (sPrimaryDeviceName != "")
+	std::string sPrimaryDeviceName = GetPrimaryVideoName();
+	if (!sPrimaryDeviceName.empty())
 		return sPrimaryDeviceName;
 
-	LOG->Warn("GetPrimaryVideoName failed; renderer selection may be wrong");
+	Locator::getLogger()->warn("GetPrimaryVideoName failed; renderer selection may be wrong");
 
 	VideoDriverInfo info;
 	if (!GetVideoDriverInfo(0, info))
@@ -71,11 +71,11 @@ GetVideoDriverInfo(int iCardno, VideoDriverInfo& info)
 	const bool bIsWin9x = version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS;
 
 	static bool bInitialized = false;
-	static vector<RString> lst;
+	static vector<std::string> lst;
 	if (!bInitialized) {
 		bInitialized = true;
 
-		const RString sTopKey =
+		const std::string sTopKey =
 		  bIsWin9x
 			? "HKEY_LOCAL_"
 			  "MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Class\\Display"
@@ -95,14 +95,14 @@ GetVideoDriverInfo(int iCardno, VideoDriverInfo& info)
 			lst[i] = sTopKey + "\\" + lst[i];
 		}
 
-		if (lst.size() == 0) {
-			LOG->Warn("GetVideoDriverInfo error: no cards found!");
+		if (lst.empty()) {
+			Locator::getLogger()->warn("GetVideoDriverInfo error: no cards found!");
 			return false;
 		}
 	}
 
 	while (iCardno < (int)lst.size()) {
-		const RString sKey = lst[iCardno];
+		const std::string sKey = lst[iCardno];
 
 		if (!RegistryAccess::GetRegValue(
 			  sKey, "DriverDesc", info.sDescription)) {

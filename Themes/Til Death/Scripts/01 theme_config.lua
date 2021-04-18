@@ -10,7 +10,9 @@ local defaultConfig = {
 		HelpMenu = false,
 		ScoreBoardNag = false,
 		MeasureLines = false,
-		ProgressBar = 1 -- 0 = bottom, 1 = top
+		ProgressBar = 1, -- 0 = bottom, 1 = top
+		ShowVisualizer = true,
+		InstantSearch = true, -- true = search per press, false = search on enter button
 	},
 	NPSDisplay = {
 		DynamicWindow = false,

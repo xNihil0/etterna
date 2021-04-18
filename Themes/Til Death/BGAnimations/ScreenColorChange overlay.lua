@@ -56,15 +56,16 @@ local function generateCategory()
 			{
 				InitCommand = function(self)
 					self:xy(frameX[1], frameY + k * spacing)
-					self:settext(visibleItems[k])
+					self:settext(THEME:GetString("ScreenColorChange", visibleItems[k]))
 					self:zoom(scale)
 					self:halign(0)
 					self:queuecommand("UpdateColor")
+					self:maxwidth((frameX[2]-frameX[1] - 5) / scale)
 				end,
 				RowChangedMessageCommand = function(self, params)
 					if params.level == 1 then
 						self:queuecommand("UpdateColor")
-						self:settext(visibleItems[k])
+						self:settext(THEME:GetString("ScreenColorChange", visibleItems[k]))
 					end
 				end,
 				ColChangedMessageCommand = function(self, params)
@@ -132,13 +133,14 @@ local function generateCategoryColors()
 				InitCommand = function(self)
 					self:xy(frameX[2], frameY + i * spacing)
 					if visibleItems[i] ~= nil then
-						self:settext(visibleItems[i])
+						self:settext(THEME:GetString("ScreenColorChange", visibleItems[i]))
 					else
 						self:visible(false)
 					end
 					self:zoom(scale)
 					self:halign(0)
 					self:queuecommand("UpdateColor")
+					self:maxwidth((frameX[3]-frameX[2] - 5) / scale)
 				end,
 				RowChanged2MessageCommand = function(self, params)
 					if params.level <= 2 then
@@ -155,7 +157,7 @@ local function generateCategoryColors()
 				UpdateColorCommand = function(self)
 					if visibleItems[i] ~= nil then
 						self:visible(true)
-						self:settext(visibleItems[i])
+						self:settext(THEME:GetString("ScreenColorChange", visibleItems[i]))
 
 						if visibleItems[i] == currentItems[2][cursorIndex[2]] then
 							self:diffuse(getMainColor("highlight"))
@@ -230,46 +232,49 @@ local function generateCategoryColors()
 	return t
 end
 
-local t =
-	Def.ActorFrame {
-	CodeMessageCommand = function(self, params)
-		if params.Name == "ColorUp" then
-			if curLevel == 1 then
-				cursorIndex[curLevel] = math.max(1, cursorIndex[curLevel] - 1)
-				cursorIndex[2] = 1
-				cursorIndex[3] = 1
-			elseif curLevel == 2 then
-				cursorIndex[curLevel] = math.max(1, cursorIndex[curLevel] - 1)
+local t = Def.ActorFrame {
+	OnCommand = function(self)
+		SCREENMAN:GetTopScreen():AddInputCallback(function(event)
+			if event.type == "InputEventType_FirstPress" then
+				if event.button == "MenuUp" then
+					if curLevel == 1 then
+						cursorIndex[curLevel] = math.max(1, cursorIndex[curLevel] - 1)
+						cursorIndex[2] = 1
+						cursorIndex[3] = 1
+					elseif curLevel == 2 then
+						cursorIndex[curLevel] = math.max(1, cursorIndex[curLevel] - 1)
+					end
+		
+					MESSAGEMAN:Broadcast("RowChanged", {level = curLevel})
+				elseif event.button == "MenuDown" then
+					if curLevel == 1 then
+						cursorIndex[curLevel] = math.min(getTableSize(configData), cursorIndex[curLevel] + 1)
+						cursorIndex[2] = 1
+						cursorIndex[3] = 1
+					elseif curLevel == 2 then
+						cursorIndex[curLevel] = math.min(getTableSize(configData[selected[1]]), cursorIndex[curLevel] + 1)
+					end
+		
+					MESSAGEMAN:Broadcast("RowChanged", {level = curLevel})
+				elseif event.button == "MenuLeft" then
+					curLevel = math.max(1, curLevel - 1)
+					MESSAGEMAN:Broadcast("ColChanged", {level = curLevel})
+				elseif event.button == "MenuRight" then
+					curLevel = math.min(2, curLevel + 1)
+					MESSAGEMAN:Broadcast("ColChanged", {level = curLevel})
+				elseif event.button == "Start" then
+					if curLevel == 1 then
+						curLevel = math.min(2, curLevel + 1)
+						MESSAGEMAN:Broadcast("ColChanged", {level = curLevel})
+					elseif curLevel == 2 then
+						setTableKeys(selected)
+						SCREENMAN:AddNewScreenToTop("ScreenColorEdit")
+					end
+				elseif event.button == "Back" then
+					SCREENMAN:GetTopScreen():Cancel()
+				end
 			end
-
-			MESSAGEMAN:Broadcast("RowChanged", {level = curLevel})
-		elseif params.Name == "ColorDown" then
-			if curLevel == 1 then
-				cursorIndex[curLevel] = math.min(getTableSize(configData), cursorIndex[curLevel] + 1)
-				cursorIndex[2] = 1
-				cursorIndex[3] = 1
-			elseif curLevel == 2 then
-				cursorIndex[curLevel] = math.min(getTableSize(configData[selected[1]]), cursorIndex[curLevel] + 1)
-			end
-
-			MESSAGEMAN:Broadcast("RowChanged", {level = curLevel})
-		elseif params.Name == "ColorLeft" then
-			curLevel = math.max(1, curLevel - 1)
-			MESSAGEMAN:Broadcast("ColChanged", {level = curLevel})
-		elseif params.Name == "ColorRight" then
-			curLevel = math.min(2, curLevel + 1)
-			MESSAGEMAN:Broadcast("ColChanged", {level = curLevel})
-		elseif params.Name == "ColorStart" then
-			if curLevel == 1 then
-				curLevel = math.min(2, curLevel + 1)
-				MESSAGEMAN:Broadcast("ColChanged", {level = curLevel})
-			elseif curLevel == 2 then
-				setTableKeys(selected)
-				SCREENMAN:AddNewScreenToTop("ScreenColorEdit")
-			end
-		elseif params.Name == "ColorCancel" then
-			SCREENMAN:GetTopScreen():Cancel()
-		end
+		end)
 	end
 }
 
@@ -278,7 +283,8 @@ t[#t + 1] =
 	LoadFont("Common Large") ..
 	{
 		InitCommand = function(self)
-			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("highlight")):settext("Color Config:")
+			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("highlight"))
+				:settext(THEME:GetString("ScreenColorChange", "Title"))
 		end
 	}
 
@@ -286,7 +292,7 @@ t[#t + 1] =
 	LoadFont("Common Normal") ..
 	{
 		InitCommand = function(self)
-			self:xy(frameX[1], frameY):halign(0):valign(1):zoom(0.6):settext("Category:")
+			self:xy(frameX[1], frameY):halign(0):valign(1):zoom(0.6):settext(THEME:GetString("ScreenColorChange", "Category"))
 		end
 	}
 
@@ -294,7 +300,7 @@ t[#t + 1] =
 	LoadFont("Common Normal") ..
 	{
 		InitCommand = function(self)
-			self:xy(frameX[2], frameY):halign(0):valign(1):zoom(0.6):settext("Name:")
+			self:xy(frameX[2], frameY):halign(0):valign(1):zoom(0.6):settext(THEME:GetString("ScreenColorChange", "Name"))
 		end
 	}
 
@@ -302,7 +308,7 @@ t[#t + 1] =
 	LoadFont("Common Normal") ..
 	{
 		InitCommand = function(self)
-			self:xy(frameX[3], frameY):halign(0):valign(1):zoom(0.6):settext("Color:")
+			self:xy(frameX[3], frameY):halign(0):valign(1):zoom(0.6):settext(THEME:GetString("ScreenColorChange", "Color"))
 		end
 	}
 
