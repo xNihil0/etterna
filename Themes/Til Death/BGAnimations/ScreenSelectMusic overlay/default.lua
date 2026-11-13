@@ -1,60 +1,133 @@
+local showVisualizer = themeConfig:get_data().global.ShowVisualizer
+
 local function input(event)
-	local top = SCREENMAN:GetTopScreen()
-	if event.DeviceInput.button == "DeviceButton_left mouse button" then
+	-- mouse click events left here to let anything in selectmusic react to them
+	if event.DeviceInput.button == "DeviceButton_left mouse button" then 
 		if event.type == "InputEventType_Release" then
-			if not SCREENMAN:get_input_redirected(PLAYER_1) then
-				if isOver(top:GetChild("Overlay"):GetChild("PlayerAvatar"):GetChild("Avatar" .. PLAYER_1):GetChild("Image")) then
-					SCREENMAN:AddNewScreenToTop("ScreenAvatarSwitch")
-				end
-			end
+			MESSAGEMAN:Broadcast("MouseLeftClick")
+			MESSAGEMAN:Broadcast("MouseUp", {event = event})
+		elseif event.type == "InputEventType_FirstPress" then
+			MESSAGEMAN:Broadcast("MouseDown", {event = event})
 		end
-	end
-	if event.DeviceInput.button == "DeviceButton_left mouse button" and event.type == "InputEventType_Release" then
-		MESSAGEMAN:Broadcast("MouseLeftClick")
-	elseif event.DeviceInput.button == "DeviceButton_right mouse button" and event.type == "InputEventType_Release" then
-		MESSAGEMAN:Broadcast("MouseRightClick")
+	elseif event.DeviceInput.button == "DeviceButton_right mouse button" then
+		if event.type == "InputEventType_Release" then
+			MESSAGEMAN:Broadcast("MouseRightClick")
+			MESSAGEMAN:Broadcast("MouseUp", {event = event})
+		elseif event.type == "InputEventType_FirstPress" then
+			MESSAGEMAN:Broadcast("MouseDown", {event = event})
+		end
 	end
 	return false
 end
 
-local t =
-	Def.ActorFrame {
+local hoverAlpha = 0.6
+
+local t = Def.ActorFrame {
 	BeginCommand = function(self)
 		local s = SCREENMAN:GetTopScreen()
 		s:AddInputCallback(input)
-		if s:GetName() == "ScreenNetSelectMusic" then
-			s:UsersVisible(false)
-		end
+		setenv("NewOptions","Main")
 	end
 }
 
-t[#t + 1] =
-	Def.Actor {
+t[#t + 1] = Def.Actor {
 	CodeMessageCommand = function(self, params)
 		if params.Name == "AvatarShow" and getTabIndex() == 0 and not SCREENMAN:get_input_redirected(PLAYER_1) then
-			SCREENMAN:AddNewScreenToTop("ScreenAvatarSwitch")
+			SCREENMAN:SetNewScreen("ScreenAssetSettings")
 		end
-	end
+	end,
+	OnCommand = function(self)
+		inScreenSelectMusic = true
+	end,
+	EndCommand = function(self)
+		inScreenSelectMusic = nil
+	end,
 }
 
 t[#t + 1] = LoadActor("../_frame")
 t[#t + 1] = LoadActor("../_PlayerInfo")
-t[#t + 1] = LoadActor("currentsort")
-t[#t + 1] =
-	LoadFont("Common Large") ..
-	{
-		InitCommand = function(self)
-			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("positive")):settext("Select Music:")
+
+if showVisualizer then
+	local vis = audioVisualizer:new {
+		x = 175,
+		y = 30,
+		maxHeight = 30,
+		freqIntervals = audioVisualizer.multiplyIntervals(audioVisualizer.defaultIntervals, 5),
+		color = getMainColor("positive"),
+		onBarUpdate = function(self)
+			--[
+			self:diffusetopedge(getMainColor("frames"))
+			self:diffusebottomedge(getMainColor("positive"))
+			--]]
+			--[[
+			self:diffuselowerleft()
+			self:diffuseupperleft()
+			self:diffuselowerright()
+			self:diffuseupperright()
+			--]]
 		end
 	}
+	t[#t + 1] = vis
+end
+
+
+t[#t + 1] = LoadActor("currentsort")
+t[#t + 1] = UIElements.TextToolTip(1, 1, "Common Large") .. {
+	Name="rando",
+	InitCommand = function(self)
+		self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("positive"))
+		self:settextf("%s:", THEME:GetString("ScreenSelectMusic", "Title"))
+		self.randex = 0
+		self.randlist = {}
+	end,
+	MouseOverCommand = function(self)
+		self:diffusealpha(hoverAlpha)
+	end,
+	MouseOutCommand = function(self)
+		self:diffusealpha(1)
+	end,
+	MouseDownCommand = function(self, params)
+		local w = SCREENMAN:GetTopScreen():GetMusicWheel()
+
+		local function newrandsong()
+			local t = w:GetSongs()
+			if #t == 0 then return nil end
+			local random_song = t[math.random(#t)]
+			return random_song
+		end
+
+		if params.event == "DeviceButton_left mouse button" then
+			
+			if INPUTFILTER:IsShiftPressed() then
+				self.randex = self.randex - 1
+				if self.randex < 1 then
+					self.randex = 1
+					table.insert(self.randlist, 1, newrandsong())
+				end
+				local randsong = self.randlist[self.randex]
+
+				-- if the last random song wasnt filtered out, we can select it
+				-- so end early after jumping to it
+				if w:SelectSong(randsong) then
+					return
+				end
+				-- otherwise, just pick a new random song
+			end
+
+			self.randex = self.randex + 1
+			if self.randex > #self.randlist then
+				self.randex = #self.randlist + 1
+				table.insert(self.randlist, newrandsong())
+			end
+			local randsong = self.randlist[self.randex]
+			w:SelectSong(randsong)
+		end
+	end
+}
 
 t[#t + 1] = LoadActor("../_cursor")
 t[#t + 1] = LoadActor("../_halppls")
-t[#t + 1] = LoadActor("currenttime")
 
-GAMESTATE:UpdateDiscordMenu(
-	GetPlayerOrMachineProfile(PLAYER_1):GetDisplayName() ..
-		": " .. string.format("%5.2f", GetPlayerOrMachineProfile(PLAYER_1):GetPlayerRating())
-)
+updateNowPlaying()
 
 return t

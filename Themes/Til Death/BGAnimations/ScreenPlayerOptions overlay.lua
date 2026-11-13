@@ -3,6 +3,8 @@ local topFrameHeight = 35
 local bottomFrameHeight = 54
 local borderWidth = 4
 
+local widescreen = GetScreenAspectRatio() > 1.7
+
 local t =
 	Def.ActorFrame {
 	Name = "PlayerAvatar"
@@ -10,17 +12,17 @@ local t =
 
 local profileP1
 
-local profileNameP1 = "No Profile"
+local profileNameP1 = THEME:GetString("GeneralInfo", "NoProfile")
 local playCountP1 = 0
 local playTimeP1 = 0
 local noteCountP1 = 0
 
 local AvatarXP1 = 5
-local AvatarYP1 = 50
+local AvatarYP1 = 44
 
 local bpms = {}
 if GAMESTATE:GetCurrentSong() then
-	bpms = GAMESTATE:GetCurrentSong():GetDisplayBpms()
+	bpms = GAMESTATE:GetCurrentSong():GetDisplayBpms(true)
 	bpms[1] = math.round(bpms[1])
 	bpms[2] = math.round(bpms[2])
 end
@@ -39,7 +41,7 @@ t[#t + 1] =
 		self:queuecommand("Set")
 	end,
 	SetCommand = function(self)
-		if GAMESTATE:IsPlayerEnabled(PLAYER_1) then
+		if GAMESTATE:IsPlayerEnabled() then
 			profileP1 = GetPlayerOrMachineProfile(PLAYER_1)
 			if profileP1 ~= nil then
 				profileNameP1 = profileP1:GetDisplayName()
@@ -47,13 +49,13 @@ t[#t + 1] =
 				playTimeP1 = profileP1:GetTotalSessionSeconds()
 				noteCountP1 = profileP1:GetTotalTapsAndHolds()
 			else
-				profileNameP1 = "No Profile"
+				profileNameP1 = THEME:GetString("GeneralInfo", "NoProfile")
 				playCountP1 = 0
 				playTimeP1 = 0
 				noteCountP1 = 0
 			end
 		else
-			profileNameP1 = "No Profile"
+			profileNameP1 = THEME:GetString("GeneralInfo", "NoProfile")
 			playCountP1 = 0
 			playTimeP1 = 0
 			noteCountP1 = 0
@@ -97,7 +99,7 @@ t[#t + 1] =
 				self:queuecommand("Set")
 			end,
 			SetCommand = function(self)
-				self:settext(profileNameP1 .. "'s Scroll Speed:")
+				self:settextf("%s%s", profileNameP1, THEME:GetString("ScreenPlayerOptions", "ScrollSpeed"))
 			end
 		},
 	LoadFont("Common Normal") ..
@@ -109,16 +111,27 @@ t[#t + 1] =
 				local speed, mode = GetSpeedModeAndValueFromPoptions(PLAYER_1)
 				self:playcommand("SpeedChoiceChanged", {pn = PLAYER_1, mode = mode, speed = speed})
 			end,
+			RateListOptionChangedMessageCommand = function(self, params)
+				self:finishtweening():sleep(0.01):queuecommand("DelayedThing")
+			end,
+			RateListOptionSavedMessageCommand = function(self, params)
+				self:finishtweening():sleep(0.01):queuecommand("DelayedThing")
+			end,
+			DelayedThingCommand = function(self)
+				self:playcommand("SpeedChoiceChanged", {pn = PLAYER_1, mode = self.mode, speed = self.speed})
+			end,
 			SpeedChoiceChangedMessageCommand = function(self, param)
+				self.mode = param.mode
+				self.speed = param.speed
 				if param.pn == PLAYER_1 then
 					local text = ""
 					if param.mode == "x" then
 						if not bpms[1] then
 							text = "??? - ???"
 						elseif bpms[1] == bpms[2] then
-							text = math.round(bpms[1] * param.speed / 100)
+							text = math.round(bpms[1] * getCurRateValue() * param.speed / 100)
 						else
-							text = string.format("%d - %d", math.round(bpms[1] * param.speed / 100), math.round(bpms[2] * param.speed / 100))
+							text = string.format("%d - %d", math.round(bpms[1] * getCurRateValue() * param.speed / 100), math.round(bpms[2] * getCurRateValue() * param.speed / 100))
 						end
 					elseif param.mode == "C" then
 						text = param.speed
@@ -158,7 +171,8 @@ t[#t + 1] =
 	LoadFont("Common Large") ..
 	{
 		InitCommand = function(self)
-			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("positive")):settext("Player Options:")
+			self:xy(5, 32):halign(0):valign(1):zoom(0.55):diffuse(getMainColor("positive"))
+			self:settextf("%s:", THEME:GetString("ScreenPlayerOptions", "Title"))
 		end
 	}
 
@@ -166,17 +180,40 @@ local NSPreviewSize = 0.5
 local NSPreviewX = 20
 local NSPreviewY = 125
 local NSPreviewXSpan = 35
-local NSPreviewReceptorY = -30
+local NSPreviewReceptorY = -32
 local OptionRowHeight = 35
 local NoteskinRow = 0
+local NSDirTable = GameToNSkinElements()
 
-function NSkinPreviewWrapper(dir, ele)
+local function NSkinPreviewWrapper(dir, ele)
 	return Def.ActorFrame {
 		InitCommand = function(self)
 			self:zoom(NSPreviewSize)
 		end,
 		LoadNSkinPreview("Get", dir, ele, PLAYER_1)
 	}
+end
+local function NSkinPreviewExtraTaps()
+	local out = Def.ActorFrame {}
+	for i = 1, #NSDirTable do
+		if i ~= 2 then
+			out[#out+1] = Def.ActorFrame {
+				Def.ActorFrame {
+					InitCommand = function(self)
+						self:x(NSPreviewXSpan * (i-1))
+					end,
+					NSkinPreviewWrapper(NSDirTable[i], "Tap Note")
+				},
+				Def.ActorFrame {
+					InitCommand = function(self)
+						self:x(NSPreviewXSpan * (i-1)):y(NSPreviewReceptorY)
+					end,
+					NSkinPreviewWrapper(NSDirTable[i], "Receptor")
+				}
+			}
+		end
+	end
+	return out
 end
 t[#t + 1] =
 	Def.ActorFrame {
@@ -204,54 +241,28 @@ t[#t + 1] =
 		)
 	end,
 	Def.ActorFrame {
-		NSkinPreviewWrapper("Left", "Tap Note")
+		InitCommand = function(self)
+			if widescreen then
+				self:x(NSPreviewXSpan)
+			else
+				self:x(NSPreviewXSpan/4)
+			end
+		end,
+		NSkinPreviewWrapper(NSDirTable[2], "Tap Note")
 	},
 	Def.ActorFrame {
 		InitCommand = function(self)
+			if widescreen then
+				self:x(NSPreviewXSpan)
+			else
+				self:x(NSPreviewXSpan/4)
+			end
 			self:y(NSPreviewReceptorY)
 		end,
-		NSkinPreviewWrapper("Left", "Receptor")
+		NSkinPreviewWrapper(NSDirTable[2], "Receptor")
 	}
 }
-if GetScreenAspectRatio() > 1.7 then
-	t[#t][#(t[#t]) + 1] =
-		Def.ActorFrame {
-		Def.ActorFrame {
-			InitCommand = function(self)
-				self:x(NSPreviewXSpan * 1)
-			end,
-			NSkinPreviewWrapper("Down", "Tap Note")
-		},
-		Def.ActorFrame {
-			InitCommand = function(self)
-				self:x(NSPreviewXSpan * 1):y(NSPreviewReceptorY)
-			end,
-			NSkinPreviewWrapper("Down", "Receptor")
-		},
-		Def.ActorFrame {
-			InitCommand = function(self)
-				self:x(NSPreviewXSpan * 2)
-			end,
-			NSkinPreviewWrapper("Up", "Tap Note")
-		},
-		Def.ActorFrame {
-			InitCommand = function(self)
-				self:x(NSPreviewXSpan * 2):y(NSPreviewReceptorY)
-			end,
-			NSkinPreviewWrapper("Up", "Receptor")
-		},
-		Def.ActorFrame {
-			InitCommand = function(self)
-				self:x(NSPreviewXSpan * 3)
-			end,
-			NSkinPreviewWrapper("Right", "Tap Note")
-		},
-		Def.ActorFrame {
-			InitCommand = function(self)
-				self:x(NSPreviewXSpan * 3):y(NSPreviewReceptorY)
-			end,
-			NSkinPreviewWrapper("Right", "Receptor")
-		}
-	}
+if widescreen then
+	t[#t][#(t[#t]) + 1] = NSkinPreviewExtraTaps()
 end
 return t

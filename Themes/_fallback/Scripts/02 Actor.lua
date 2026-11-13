@@ -1,3 +1,6 @@
+--- Actor class sugar and helpers
+-- @module 02_Actor
+
 -- Convenience aliases:
 left = "HorizAlign_Left"
 center = "HorizAlign_Center"
@@ -5,6 +8,10 @@ right = "HorizAlign_Right"
 top = "VertAlign_Top"
 middle = "VertAlign_Middle"
 bottom = "VertAlign_Bottom"
+
+function Actor:GetSibling(n)
+	return self:GetParent():GetChild(n)
+end
 
 function Actor:ease(t, fEase)
 	-- Optimizations:
@@ -157,7 +164,7 @@ function Actor:hide_if(b)
 end
 
 function Actor:player(p)
-	self:visible(GAMESTATE:IsHumanPlayer(p))
+	self:visible(GAMESTATE:IsHumanPlayer())
 	return self
 end
 
@@ -398,24 +405,6 @@ function Actor:LyricCommand(side)
 	return self
 end
 
--- formerly in 02 HelpDisplay.lua, although nothing uses it:
-function HelpDisplay:setfromsongorcourse()
-	local Artists = {}
-	local AltArtists = {}
-
-	local Song = GAMESTATE:GetCurrentSong()
-	local Trail = GAMESTATE:GetCurrentTrail(GAMESTATE:GetMasterPlayerNumber())
-	if Song then
-		table.insert(Artists, Song:GetDisplayArtist())
-		table.insert(AltArtists, Song:GetTranslitArtist())
-	elseif Trail then
-		Artists, AltArtists = Trail:GetArtists()
-	end
-
-	self:settips(Artists, AltArtists)
-	return self
-end
-
 -- Play the sound on the given player's side. Must set SupportPan = true
 -- on load.
 function ActorSound:playforplayer(pn)
@@ -466,6 +455,33 @@ DrawOrder = {
 function Actor:hidden(bHide)
 	lua.ReportScriptError("hidden is deprecated, use visible instead. (used on " .. self:GetName() .. ")")
 	self:visible(not bHide)
+end
+
+-- safely get a very deep child of an ActorFrame
+-- just in case something in between doesnt exist
+-- the names should be in the order you would chain the GetChild usages
+-- GetChild("Top"):GetChild("childchild"):GetChild("greatgrandchild") ...
+-- if something doesnt exist, return nil
+function ActorFrame:GetDescendant(...)
+    local names = {...}
+    local final = self
+    for i, name in ipairs(names) do
+        if final ~= nil and final.GetChild ~= nil then
+            final = final:GetChild(name)
+        else
+            return final
+        end
+    end
+    return final
+end
+
+-- return a flat table of every child and every child's child recursively
+function ActorFrame:GetAllDescendants()
+	local o = {}
+	self:RunCommandsRecursively(function(self)
+		o[#o+1] = self
+	end)
+	return o
 end
 
 -- (c) 2006-2012 Glenn Maynard, the Spinal Shark Collective, et al.

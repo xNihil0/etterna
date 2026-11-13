@@ -1,20 +1,21 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "RageSoundDriver_ALSA9_Software.h"
 
-#include "RageLog.h"
-#include "RageSound.h"
-#include "RageSoundManager.h"
-#include "RageUtil.h"
-#include "RageTimer.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Sound/RageSound.h"
+#include "RageUtil/Sound/RageSoundManager.h"
+#include "RageUtil/Utils/RageUtil.h"
 #include "ALSA9Dynamic.h"
-#include "PrefsManager.h"
+#include "Etterna/Singletons/PrefsManager.h"
 
 #include "archutils/Unix/GetSysInfo.h"
 
 #include <sys/time.h>
 #include <sys/resource.h>
 
-REGISTER_SOUND_DRIVER_CLASS2(ALSA - sw, ALSA9_Software);
+// clang-format off
+REGISTER_SOUND_DRIVER_CLASS2(ALSA-sw, ALSA9_Software);
+// clang-format on
 
 static const int channels = 2;
 static const int samples_per_frame = channels;
@@ -92,20 +93,21 @@ RageSoundDriver_ALSA9_Software::RageSoundDriver_ALSA9_Software()
 {
 	m_pPCM = NULL;
 	m_bShutdown = false;
+	m_iSampleRate = 44100;
 }
 
-RString
+std::string
 RageSoundDriver_ALSA9_Software::Init()
 {
-	RString sError = LoadALSA();
+	std::string sError = LoadALSA();
 	if (sError != "")
 		return ssprintf("Driver unusable: %s", sError.c_str());
 
 	g_iMaxWriteahead = safe_writeahead;
-	RString sys;
+	std::string sys;
 	int vers;
 	GetKernel(sys, vers);
-	LOG->Trace("OS: %s ver %06i", sys.c_str(), vers);
+	Locator::getLogger()->trace("OS: {} ver {}", sys.c_str(), vers);
 	if (sys == "Linux" && vers >= 20600)
 		g_iMaxWriteahead = g_iMaxWriteahead_linux_26;
 
@@ -135,9 +137,9 @@ RageSoundDriver_ALSA9_Software::~RageSoundDriver_ALSA9_Software()
 	if (m_MixingThread.IsCreated()) {
 		/* Signal the mixing thread to quit. */
 		m_bShutdown = true;
-		LOG->Trace("Shutting down mixer thread ...");
+		Locator::getLogger()->trace("Shutting down mixer thread ...");
 		m_MixingThread.Wait();
-		LOG->Trace("Mixer thread shut down.");
+		Locator::getLogger()->trace("Mixer thread shut down.");
 	}
 
 	delete m_pPCM;
@@ -150,28 +152,3 @@ RageSoundDriver_ALSA9_Software::GetPlayLatency() const
 {
 	return float(g_iMaxWriteahead) / m_iSampleRate;
 }
-
-/*
- * (c) 2002-2004 Glenn Maynard, Aaron VonderHaar
- * All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including
- * without limitation the rights to use, copy, modify, merge, publish,
- * distribute, and/or sell copies of the Software, and to permit persons to
- * whom the Software is furnished to do so, provided that the above
- * copyright notice(s) and this permission notice appear in all copies of
- * the Software and that both the above copyright notice(s) and this
- * permission notice appear in supporting documentation.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
- * THIRD PARTY RIGHTS. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS
- * INCLUDED IN THIS NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT
- * OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
- * OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */

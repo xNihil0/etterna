@@ -1,4 +1,4 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "MouseDevice.h"
 
 using __gnu_cxx::hash_map;
@@ -89,7 +89,7 @@ MouseDevice::AddElement(int usagePage,
 			if (buttonID <= MOUSE_MIDDLE)
 				m_Mapping[cookie] = buttonID;
 			else
-				LOG->Warn("Button id too large: %d.", int(buttonID));
+				Locator::getLogger()->warn("Button id too large: {}.", int(buttonID));
 			break;
 		} break;
 		default:
@@ -125,7 +125,7 @@ MouseDevice::Open()
 
 void
 MouseDevice::GetButtonPresses(
-  vector<DeviceInput>& vPresses,
+  std::vector<DeviceInput>& vPresses,
   IOHIDElementCookie cookie,
   int value,
   const std::chrono::time_point<std::chrono::steady_clock>& now) const
@@ -143,9 +143,9 @@ MouseDevice::GetButtonPresses(
 
 	float level = MACMouseScroll();
 	INPUTFILTER->ButtonPressed(
-	  DeviceInput(DEVICE_MOUSE, MOUSE_WHEELUP, max(-level, 0), now));
+	  DeviceInput(DEVICE_MOUSE, MOUSE_WHEELUP, fmax(-level, 0), now));
 	INPUTFILTER->ButtonPressed(
-	  DeviceInput(DEVICE_MOUSE, MOUSE_WHEELDOWN, max(+level, 0), now));
+	  DeviceInput(DEVICE_MOUSE, MOUSE_WHEELDOWN, fmax(+level, 0), now));
 
 	hash_map<IOHIDElementCookie, DeviceButton>::const_iterator iter =
 	  m_Mapping.find(cookie);
@@ -156,7 +156,7 @@ MouseDevice::GetButtonPresses(
 }
 
 void
-MouseDevice::GetDevicesAndDescriptions(vector<InputDeviceInfo>& vDevices) const
+MouseDevice::GetDevicesAndDescriptions(std::vector<InputDeviceInfo>& vDevices) const
 {
 	vDevices.push_back(InputDeviceInfo(DEVICE_MOUSE, "Mouse"));
 }

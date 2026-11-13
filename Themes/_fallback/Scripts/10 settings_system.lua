@@ -1,4 +1,7 @@
-local settings_prefix = "/" .. THEME:GetThemeDisplayName() .. "_settings/"
+--- Lua based reloadable configurations
+-- @module 10_settings_system
+
+local settings_prefix = "/" .. THEME:GetRealThemeDisplayName() .. "_settings/"
 global_cur_game = GAMESTATE:GetCurrentGame():GetName():lower()
 
 function force_table_elements_to_match_type(candidate, must_match, depth_remaining)
@@ -25,8 +28,11 @@ local function slot_to_prof_dir(slot, reason)
 	if slot and slot ~= "ProfileSlot_Invalid" then
 		prof_dir = PROFILEMAN:GetProfileDir(slot)
 		if not prof_dir or prof_dir == "" then
-			--Warn("Could not fetch profile dir to " .. reason .. ".")
-			return
+			lua.ReportScriptError("Could not fetch profile dir to " .. reason .. ".")
+			lua.ReportScriptError("DO NOT TRY TO LOAD PROFILE OPTIONS WITHOUT A PROFILE SELECTED!")
+			lua.ReportScriptError("THIS THROWS A BLOCKING ERROR ON PURPOSE TO PREVENT PROFILE SAVE LOSS")
+			lua.ReportScriptError("IF YOU SEE THIS, YOU MAY HAVE INSTALLED A BAD NOTESKIN")
+			return nil > 3
 		end
 	end
 	return prof_dir
@@ -85,7 +91,7 @@ local setting_mt = {
 		end,
 		get_data = function(self, slot)
 			slot = slot or "ProfileSlot_Invalid"
-			return self.data_set[slot] or self.default
+			return self.data_set[slot] or self:load(slot)
 		end,
 		set_data = function(self, slot, data)
 			slot = slot or "ProfileSlot_Invalid"
@@ -147,8 +153,32 @@ function write_str_to_file(str, fname, str_name)
 	end
 end
 
+local z_banned_keywords = {
+	["and"] = true,
+	["break"] = true,
+	["do"] = true,
+	["else"] = true,
+	["elseif"] = true,
+	["end"] = true,
+	["false"] = true,
+	["for"] = true,
+	["function"] = true,
+	["goto"] = true,
+	["if"] = true,
+	["in"] = true,
+	["local"] = true,
+	["nil"] = true,
+	["not"] = true,
+	["or"] = true,
+	["repeat"] = true,
+	["return"] = true,
+	["then"] = true,
+	["true"] = true,
+	["until"] = true,
+	["while"] = true,
+}
 function string_needs_escape(str)
-	if str:match("^[a-zA-Z_][a-zA-Z_0-9]*$") then
+	if str:match("^[a-zA-Z_][a-zA-Z_0-9]*$") and z_banned_keywords[str] == nil then
 		return false
 	else
 		return true
@@ -156,6 +186,7 @@ function string_needs_escape(str)
 end
 
 function lua_table_to_string(t, indent, line_pos)
+	if t == nil then return "{}" end
 	indent = indent or ""
 	line_pos = (line_pos or #indent) + 1
 	local internal_indent = indent .. "  "

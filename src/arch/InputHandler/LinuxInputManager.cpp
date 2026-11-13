@@ -3,9 +3,9 @@
 #include "InputHandler_Linux_Event.h"
 #include "InputHandler_Linux_Joystick.h"
 
-#include "RageInput.h" // g_sInputDrivers
-#include "RageLog.h"
-#include "Foreach.h"
+#include "RageUtil/Misc/RageInput.h" // g_sInputDrivers
+#include "Core/Services/Locator.hpp"
+#include "Etterna/Models/Misc/Foreach.h"
 
 #include <string> // std::string::npos
 
@@ -15,22 +15,21 @@
 
 #include <errno.h>
 
-RString
-getDevice(RString inputDir, RString type)
+std::string
+getDevice(std::string inputDir, std::string type)
 {
-	RString result = "";
+	std::string result = "";
 	DIR* dir = opendir(inputDir.c_str());
 	if (dir == NULL) {
-		LOG->Warn("LinuxInputManager: Couldn't open %s: %s.",
-				  inputDir.c_str(),
-				  strerror(errno));
+        Locator::getLogger()->warn("LinuxInputManager: Couldn't open {}: {}.",
+				  inputDir.c_str(), strerror(errno));
 		return "";
 	}
 
 	struct dirent* d;
 	while ((d = readdir(dir)) != NULL)
 		if (strncmp(type.c_str(), d->d_name, type.size()) == 0) {
-			result = RString("/dev/input/") + d->d_name;
+			result = std::string("/dev/input/") + d->d_name;
 			break;
 		}
 
@@ -58,9 +57,7 @@ LinuxInputManager::LinuxInputManager()
 	if (sysClassInput == NULL) {
 		// XXX: Probably should throw a Dialog. But Linux doesn't have a
 		// DialogDriver yet so eh.
-		LOG->Warn(
-		  "Couldn't open /sys/class/input: %s. Joysticks will not work!",
-		  strerror(errno));
+        Locator::getLogger()->warn("Couldn't open /sys/class/input: {}. Joysticks will not work!", strerror(errno));
 		return;
 	}
 
@@ -69,7 +66,7 @@ LinuxInputManager::LinuxInputManager()
 		if (strncmp("input", d->d_name, 5) != 0)
 			continue;
 
-		RString dName = RString("/sys/class/input/") + d->d_name;
+		std::string dName = std::string("/sys/class/input/") + d->d_name;
 
 		bool bEventPresent = getDevice(dName, "event") != "";
 		if (m_bEventEnabled && bEventPresent) {
@@ -84,7 +81,7 @@ LinuxInputManager::LinuxInputManager()
 		}
 
 		if (!bEventPresent && !bJoystickPresent)
-			LOG->Info("LinuxInputManager: %s seems to have no eventNN or jsNN.",
+            Locator::getLogger()->info("LinuxInputManager: {} seems to have no eventNN or jsNN.",
 					  dName.c_str());
 	}
 	closedir(sysClassInput);
@@ -95,9 +92,9 @@ LinuxInputManager::InitDriver(InputHandler_Linux_Event* driver)
 {
 	m_EventDriver = driver;
 
-	FOREACH(RString, m_vsPendingEventDevices, dev)
+	FOREACH(std::string, m_vsPendingEventDevices, dev)
 	{
-		RString devFile = getDevice(*dev, "event");
+		std::string devFile = getDevice(*dev, "event");
 		ASSERT(devFile != "");
 
 		if (!driver->TryDevice(devFile) && m_bJoystickEnabled &&
@@ -115,9 +112,9 @@ LinuxInputManager::InitDriver(InputHandler_Linux_Joystick* driver)
 {
 	m_JoystickDriver = driver;
 
-	FOREACH(RString, m_vsPendingJoystickDevices, dev)
+	FOREACH(std::string, m_vsPendingJoystickDevices, dev)
 	{
-		RString devFile = getDevice(*dev, "js");
+		std::string devFile = getDevice(*dev, "js");
 		ASSERT(devFile != "");
 
 		driver->TryDevice(devFile);

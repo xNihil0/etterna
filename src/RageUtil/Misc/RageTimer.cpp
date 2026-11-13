@@ -1,0 +1,96 @@
+/*
+ * This can be used in two ways: as a timestamp or as a timer.
+ *
+ * As a timer,
+ * RageTimer Timer;
+ * for(;;) {
+ *   printf( "Will be approximately: %f", Timer.PeekDeltaTime()) ;
+ *   float fDeltaTime = Timer.GetDeltaTime();
+ * }
+ *
+ * or as a timestamp:
+ * void foo( RageTimer &timestamp ) {
+ *     if( timestamp.IsZero() )
+ *         printf( "The timestamp isn't set." );
+ *     else
+ *         printf( "The timestamp happened %f ago", timestamp.Ago() );
+ *     timestamp.Touch();
+ *     printf( "Near zero: %f", timestamp.Age() );
+ * }
+ */
+
+#include "Etterna/Globals/global.h"
+
+#include "RageTimer.h"
+#include "RageUtil/Utils/RageUtil.h"
+
+#include <chrono>
+
+const RageTimer RageZeroTimer(0);
+static auto g_iStartTime = std::chrono::steady_clock::now();
+
+double
+RageTimer::GetTimeSinceStart()
+{
+	std::chrono::duration<double> t = std::chrono::steady_clock::now() - g_iStartTime;
+	return t.count();
+}
+
+double
+RageTimer::GetTimeSinceStart64()
+{
+	std::chrono::duration<double> t = std::chrono::steady_clock::now() - g_iStartTime;
+	return t.count();
+}
+
+double
+RageTimer::Ago() const
+{
+	const RageTimer Now;
+	return Now - *this;
+}
+
+double
+RageTimer::GetDeltaTime()
+{
+	const RageTimer Now;
+	const double diff = Difference(Now, *this);
+	*this = Now;
+	return diff;
+}
+
+RageTimer
+RageTimer::operator+(double tm) const
+{
+	return Sum(*this, tm);
+}
+
+double
+RageTimer::operator-(const RageTimer& rhs) const
+{
+	return Difference(*this, rhs);
+}
+
+bool
+RageTimer::operator<(const RageTimer& rhs) const
+{
+	return tm < rhs.tm;
+}
+
+RageTimer
+RageTimer::Sum(const RageTimer& lhs, double tm)
+{
+	const std::chrono::steady_clock::time_point ret =
+		lhs.tm + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(tm));
+	return RageTimer(ret);
+}
+
+double
+RageTimer::Difference(const RageTimer& lhs, const RageTimer& rhs)
+{
+	const std::chrono::duration<double> diff = lhs.tm - rhs.tm;
+	return diff.count();
+}
+
+#include "Etterna/Singletons/LuaManager.h"
+LuaFunction(GetTimeSinceStart, RageTimer::GetTimeSinceStart64())

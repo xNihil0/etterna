@@ -49,13 +49,26 @@ local hhh = SCREEN_HEIGHT * 0.8
 local rtzoom = 0.6
 
 local function dooting(self)
-	self:GetChild("BGQframe"):queuecommand("dooting")
+	if self:IsVisible() then
+		self:GetChild("BGQframe"):queuecommand("dooting")
+	end
 end
+
+local translated_info = {
+	ItemsDownloading = THEME:GetString("ScreenSystemLayerOverlay", "ItemsDownloading"),
+	ItemsLeftInQueue = THEME:GetString("ScreenSystemLayerOverlay", "ItemsLeftInQueue")
+}
 
 local dltzoom = 0.5
 -- download queue/progress
 t[#t + 1] =
 	Def.ActorFrame {
+	PausingDownloadsMessageCommand=function(self)
+		self:visible(false)
+	end,
+	ResumingDownloadsMessageCommand=function(self)
+		self:visible(false)
+	end,
 	AllDownloadsCompletedMessageCommand = function(self)
 		self:visible(false)
 	end,
@@ -86,10 +99,13 @@ t[#t + 1] =
 			):halign(0):valign(0):zoom(dltzoom)
 		end,
 		DLProgressAndQueueUpdateMessageCommand = function(self, params)
-			self:settext(
-				params.dlsize ..
-					" items currently downloading\n" ..
-						params.dlprogress .. "\n\n" .. params.queuesize .. " items in download queue:\n" .. params.queuedpacks
+			self:settextf("%s %s\n%s\n\n%s %s:\n%s",
+				params.dlsize,
+				translated_info["ItemsDownloading"],
+				params.dlprogress,
+				params.queuesize,
+				translated_info["ItemsLeftInQueue"],
+				params.queuedpacks
 			)
 			self:GetParent():GetChild("BGQframe"):zoomy(self:GetHeight() - hhh / 4 + 10)
 		end
@@ -102,8 +118,15 @@ t[#t + 1] =
 		self:visible(true)
 	end,
 	DFRFinishedMessageCommand = function(self, params)
+		ms.ok("Loaded " .. params.newsongs .. " new songs")
 		self:visible(false)
 	end,
+	ReloadedCurrentSongMessageCommand = function(self)
+        ms.ok("Reloaded current song")
+    end,
+    ReloadedCurrentPackMessageCommand = function(self)
+        ms.ok("Reloaded current pack")
+    end,
 	BeginCommand = function(self)
 		self:visible(false)
 		self:x(www / 8 + 10):y(SCREEN_BOTTOM - hhh / 8 - 70)

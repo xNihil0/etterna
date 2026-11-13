@@ -1,9 +1,9 @@
-#include "global.h"
+#include "Etterna/Globals/global.h"
 #include "InputHandler_Linux_Joystick.h"
-#include "RageLog.h"
-#include "RageUtil.h"
+#include "Core/Services/Locator.hpp"
+#include "RageUtil/Utils/RageUtil.h"
 #include "LinuxInputManager.h"
-#include "RageInputDevice.h" // NUM_JOYSTICKS
+#include "RageUtil/Misc/RageInputDevice.h" // NUM_JOYSTICKS
 
 #if defined(HAVE_UNISTD_H)
 #include <unistd.h>
@@ -25,7 +25,7 @@ InputHandler_Linux_Joystick::InputHandler_Linux_Joystick()
 {
 	m_bDevicesChanged = false;
 
-	LOG->Trace("InputHandler_Linux_Joystick::InputHandler_Linux_Joystick");
+	Locator::getLogger()->trace("InputHandler_Linux_Joystick::InputHandler_Linux_Joystick");
 	for (int i = 0; i < NUM_JOYSTICKS; ++i)
 		fds[i] = -1;
 
@@ -62,23 +62,23 @@ void
 InputHandler_Linux_Joystick::StopThread()
 {
 	m_bShutdown = true;
-	LOG->Trace("Shutting down joystick thread ...");
+	Locator::getLogger()->trace("Shutting down joystick thread ...");
 	m_InputThread.Wait();
-	LOG->Trace("Joystick thread shut down.");
+	Locator::getLogger()->trace("Joystick thread shut down.");
 }
 
 bool
-InputHandler_Linux_Joystick::TryDevice(RString dev)
+InputHandler_Linux_Joystick::TryDevice(std::string dev)
 {
 	struct stat st;
-	if (stat(dev, &st) == -1) {
-		LOG->Warn(
-		  "LinuxJoystick: Couldn't stat %s: %s", dev.c_str(), strerror(errno));
+	if (stat(dev.c_str(), &st) == -1) {
+		Locator::getLogger()->warn(
+		  "LinuxJoystick: Couldn't stat {}: {}", dev.c_str(), strerror(errno));
 		return false;
 	}
 
 	if (!S_ISCHR(st.st_mode)) {
-		LOG->Warn("LinuxJoystick: Ignoring %s: not a character device",
+		Locator::getLogger()->warn("LinuxJoystick: Ignoring {}: not a character device",
 				  dev.c_str());
 		return false;
 	}
@@ -91,7 +91,7 @@ InputHandler_Linux_Joystick::TryDevice(RString dev)
 	}
 	/* Thread is stopped! DO NOT RETURN */
 	{
-		fds[m_iLastFd] = open(dev, O_RDONLY);
+		fds[m_iLastFd] = open(dev.c_str(), O_RDONLY);
 
 		if (fds[m_iLastFd] != -1) {
 			char szName[1024];
@@ -102,12 +102,12 @@ InputHandler_Linux_Joystick::TryDevice(RString dev)
 			else
 				m_sDescription[m_iLastFd] = szName;
 
-			LOG->Info("LinuxJoystick: Opened %s", dev.c_str());
+			Locator::getLogger()->info("LinuxJoystick: Opened {}", dev.c_str());
 			m_iLastFd++;
 			m_bDevicesChanged = true;
 			ret = true;
 		} else
-			LOG->Warn("LinuxJoystick: Failed to open %s: %s",
+			Locator::getLogger()->warn("LinuxJoystick: Failed to open {}: {}",
 					  dev.c_str(),
 					  strerror(errno));
 	}
@@ -158,7 +158,7 @@ InputHandler_Linux_Joystick::InputThread()
 			js_event event;
 			int ret = read(fds[i], &event, sizeof(event));
 			if (ret != sizeof(event)) {
-				LOG->Warn("Unexpected packet (size %i != %i) from joystick %i; "
+				Locator::getLogger()->warn("Unexpected packet (size {} != {}) from joystick {}; "
 						  "disabled",
 						  ret,
 						  (int)sizeof(event),
@@ -188,14 +188,14 @@ InputHandler_Linux_Joystick::InputThread()
 					DeviceButton neg = enum_add2(JOY_LEFT, 2 * event.number);
 					DeviceButton pos = enum_add2(JOY_RIGHT, 2 * event.number);
 					float l = SCALE(int(event.value), 0.0f, 32767, 0.0f, 1.0f);
-					ButtonPressed(DeviceInput(id, neg, max(-l, 0), now));
-					ButtonPressed(DeviceInput(id, pos, max(+l, 0), now));
+					ButtonPressed(DeviceInput(id, neg, max(-l, 0.F), now));
+					ButtonPressed(DeviceInput(id, pos, max(+l, 0.F), now));
 					break;
 				}
 
 				default:
-					LOG->Warn(
-					  "Unexpected packet (type %i) from joystick %i; disabled",
+					Locator::getLogger()->warn(
+					  "Unexpected packet (type {}) from joystick {}; disabled",
 					  event.type,
 					  i);
 					close(fds[i]);
@@ -210,7 +210,7 @@ InputHandler_Linux_Joystick::InputThread()
 
 void
 InputHandler_Linux_Joystick::GetDevicesAndDescriptions(
-  vector<InputDeviceInfo>& vDevicesOut)
+  std::vector<InputDeviceInfo>& vDevicesOut)
 {
 	// HACK: If IH_Linux_Joystick is constructed before IH_Linux_Event, our
 	// thread won't be started as part of the constructor. This isn't called

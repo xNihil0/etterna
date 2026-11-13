@@ -1,26 +1,30 @@
-t = Def.ActorFrame {}
+local hoverAlpha = 0.6
 
-t[#t + 1] =
-	Def.Quad {
+local t = Def.ActorFrame {}
+
+t[#t + 1] = Def.Quad {
 	InitCommand = function(self)
-		self:zoomto(22, 22):diffuse(color("#ffffff")):diffusealpha(0.7)
+		self:zoomto(20, 20):diffuse(color("#ffffff")):diffusealpha(0.7)
 	end
 }
 
-t[#t + 1] =
-	Def.Quad {
+t[#t + 1] = UIElements.QuadButton(1, 1) .. {
 	InitCommand = function(self)
-		self:x(22):zoomto(66, 22):diffuse(color("#ffffff")):diffusealpha(0.5)
+		self:zoomto(54, 20):diffuse(color("#ffffff")):diffusealpha(0.5):halign(0)
 	end,
-	MouseLeftClickMessageCommand = function(self)
-		if isOver(self) then
+	MouseOverCommand = function(self)
+		self:diffusealpha(hoverAlpha)
+	end,
+	MouseOutCommand = function(self)
+		self:diffusealpha(1)
+	end,
+	MouseDownCommand = function(self, params)
+		if params.event == "DeviceButton_left mouse button" and self:GetParent():GetParent():GetDiffuseAlpha() > 0 then
 			local s = GAMESTATE:GetCurrentSong()
 			if s then
-				local index = math.floor((getTrueY(self) - 70) / 24) + 1
-				local allSteps = SongUtil.GetPlayableSteps(s)
-				local steps = allSteps[index]
-				if steps and steps ~= GAMESTATE:GetCurrentSteps(PLAYER_1) then
-					GAMESTATE:SetCurrentSteps(PLAYER_1, steps)
+				local idx = self:GetParent():GetParent():GetIndex() - self:GetParent():GetParent():GetParent():GetCurrentIndex()
+				if idx ~= 0 then
+					SCREENMAN:GetTopScreen():ChangeSteps(idx)
 				end
 			end
 		end

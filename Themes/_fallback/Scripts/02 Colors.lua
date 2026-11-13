@@ -1,3 +1,6 @@
+--- Game Color utilities
+-- @module 02_Colors
+
 math.mod = math.fmod --alias used in some places
 -- xxx: everything below the big line of ...========... needs to be redone
 Color = {
@@ -72,8 +75,6 @@ GameColor = {
 		Hard = color("#ff2f39"), -- red
 		Challenge = color("#1cd8ff"), -- light blue
 		Edit = color("0.8,0.8,0.8,1"), -- gray
-		Couple = color("#ed0972"), -- hot pink
-		Routine = color("#ff9a00"), -- orange
 		--[[ These are for courses, so let's slap them here in case someone
 		wanted to use Difficulty in Course and Step regions. ]]
 		Difficulty_Beginner = color("#ff32f8"), -- purple
@@ -82,8 +83,6 @@ GameColor = {
 		Difficulty_Hard = color("#ff2f39"), -- red
 		Difficulty_Challenge = color("#1cd8ff"), -- light blue
 		Difficulty_Edit = color("0.8,0.8,0.8,1"), -- gray
-		Difficulty_Couple = color("#ed0972"), -- hot pink
-		Difficulty_Routine = color("#ff9a00") -- orange
 	},
 	Stage = {
 		Stage_1st = color("#00ffc7"),
@@ -238,7 +237,11 @@ function ColorToHex(c)
 	local bX = hex(scale(b, 0, 1, 0, 255))
 	local aX = hex(scale(a, 0, 1, 0, 255))
 
-	return rX .. gX .. bX .. aX
+	if aX == "FF" then
+		return rX .. gX .. bX
+	else
+		return rX .. gX .. bX .. aX
+	end
 end
 
 -- HSV utilities (adapted from http://www.cs.rit.edu/~ncs/color/t_convert.html)
@@ -318,67 +321,42 @@ end
 -- ColorToHSV(c)
 -- Takes in a normal color("") and returns a table with the HSV values.
 function ColorToHSV(c)
-	local r = c[1]
-	local g = c[2]
-	local b = c[3]
-	-- alpha requires error checking sometimes.
-	local a = HasAlpha(c)
+    local r, g, b, a = c[1], c[2], c[3], HasAlpha(c)
 
-	local h = 0
-	local s = 0
-	local v = 0
+    local min, max = math.min(r, g, b), math.max(r, g, b)
+    local v = max
+    local delta = max - min
+    local h, s
 
-	local min = math.min(r, g, b)
-	local max = math.max(r, g, b)
-	v = max
+    if delta == 0 then
+        -- This means there is no saturation; it's a shade of grey
+        -- Hue is undefined, but we set it to 0
+        h = 0
+        s = 0
+    else
+        s = delta / max
+        if r == max then
+            h = (g - b) / delta -- yellow/magenta
+        elseif g == max then
+            h = 2 + (b - r) / delta -- cyan/yellow
+        else
+            h = 4 + (r - g) / delta -- magenta/cyan
+        end
 
-	local delta = max - min
+        h = h * 60 -- Convert to degrees
+        if h < 0 then
+            h = h + 360
+        end
+    end
 
-	-- xxx: how do we deal with complete black?
-	if min == 0 and max == 0 then
-		-- we have complete darkness; make it cheap.
-		return {
-			Hue = 0,
-			Sat = 0,
-			Value = 0,
-			Alpha = a
-		}
-	end
-
-	if max ~= 0 then
-		s = delta / max -- rofl deltamax :|
-	else
-		-- r = g = b = 0; s = 0, v is undefined
-		s = 0
-		h = -1
-		return {
-			Hue = h,
-			Sat = s,
-			Value = v,
-			Alpha = 1
-		}
-	end
-
-	if r == max then
-		h = (g - b) / delta -- yellow/magenta
-	elseif g == max then
-		h = 2 + (b - r) / delta -- cyan/yellow
-	else
-		h = 4 + (r - g) / delta -- magenta/cyan
-	end
-
-	h = h * 60 -- degrees
-
-	if h < 0 then
-		h = h + 360
-	end
-
-	return {
-		Hue = h,
-		Sat = s,
-		Value = v,
-		Alpha = a
-	}
+    -- at this point, h should be a number between 0 and 360
+    -- s should be between 0 and 1, and v should be between 0 and 1
+    return {
+        Hue = h,
+        Sat = s,
+        Value = v,
+        Alpha = a
+    }
 end
 
 function Hue(color, newHue)
@@ -393,6 +371,7 @@ function Hue(color, newHue)
 	c.Hue = newHue
 	return HSVToColor(c)
 end
+
 function Saturation(color, percent)
 	local c = ColorToHSV(color)
 	-- error checking
@@ -401,7 +380,11 @@ function Saturation(color, percent)
 	elseif percent > 1 then
 		percent = 1.0
 	end
-	c.Sat = percent
+    -- if the color is white or a shade of grey, changing saturation has no visible effect
+    if c.Value == 1 and c.Sat == 0 then 
+        return color
+    end
+    c.Sat = percent
 	return HSVToColor(c)
 end
 
@@ -428,3 +411,23 @@ function Alpha(color, percent)
 	c.Alpha = percent
 	return HSVToColor(c)
 end
+
+function ColorMultiplier(color, multi)
+	-- error checking
+	if multi < 0 then
+		multi = 0.0
+	end
+	color[1] = color[1] * multi
+	color[2] = color[2] * multi
+	color[3] = color[3] * multi
+	return color
+end
+
+
+function SameColor(c1,c2)
+	if c1[1] == c2[1] and c1[2] == c2[2] and c1[3] == c2[3] then
+		return true
+	end
+	return false
+end
+

@@ -1,11 +1,207 @@
-cmake_minimum_required(VERSION 3.2.0)
+# ROOT CMakeLists.txt
+cmake_minimum_required(VERSION 3.19.0)
 
-project(Etterna)
+# Policies
+cmake_policy(SET CMP0076 NEW)  # Tell cmake to convert target_sources input from relative path to absolute path
+cmake_policy(SET CMP0077 NEW)  # Tell cmake to allow variables set through "set" and "option" to be compatible with each other
+cmake_policy(SET CMP0048 NEW)  # Tell cmake to use VERSION parameter in project() for all PROJECT_VERSION_* variables
+cmake_policy(SET CMP0092 NEW)  # Tell cmake not to include warning parameters by default in CMAKE_<LANG>_FLAGS variables
 
-include (StepmaniaCore.cmake)
+## Default Policies
+set(CMAKE_POLICY_DEFAULT_CMP0048 NEW) # Tell CMake to use the new policy for CMP0048. (Due to zlib not defining it)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) # Tell CMake to use the new policy for CMP0077. (Due to fftw not defining it)
 
-# The external libraries need to be included.
-add_subdirectory(extern)
+# Options
+## We statically link the CRT by default. If you would like to dynamically
+## link the CRT, you can append "DLL" to the end of the variable below.
+## More Info: https://cmake.org/cmake/help/latest/variable/CMAKE_MSVC_RUNTIME_LIBRARY.html
 
-# The internal libraries and eventual executable to be used.
-add_subdirectory(src)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
+# PROJECT WIDE SETUP
+project(Etterna
+		VERSION 0.75.1
+        HOMEPAGE_URL https://github.com/etternagame/etterna/
+        LANGUAGES C CXX ASM)
+
+## CMake and Compiler Setup
+set(CMAKE_CXX_STANDARD 20)                                      # Minimum C++ Version
+set(CMAKE_CXX_EXTENSIONS OFF)                                   # True if compiler extensions are necessary. (Changes -std flag)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)                             # True to require minimum C++ version to compile
+if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.11)                      # First macOS version supporting M1 chips
+else()
+    # Host is x86_64
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.10)                      # Oldest platform we still support
+endif()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)                           # Export compile commands for clang-tidy
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/CMake/Modules)  # Tell CMake where to access FindXXX.cmake files
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)                    # Enable folders/filters within IDEs
+
+# Project Build Targets
+add_executable(Etterna)
+
+# Project Compile Options
+set(WITH_CRASHPAD TRUE CACHE BOOL "Compile with Crash Handler (Requires depot_tools installed)")
+set(WITH_VULKAN TRUE CACHE BOOL "Compile Vulkan support (Requires Vulkan SDK to be installed and VULKAN_SDK environment variable to be set to SDK root dir)")
+set(WITH_VULKAN_LINUX_EXTRAS FALSE CACHE BOOL "Link additional Vulkan dependencies (fix for some Linux distros)")
+set(WITH_FFMPEG TRUE CACHE BOOL "Enable FFMPEG")
+
+# Discord doesn't seem to provide Linux arm64 binaries...
+set(SUPPORT_DISCORD_SDK ON CACHE BOOL "Enable Discord RPC")
+if(UNIX AND NOT APPLE)
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _proc)
+    if(_proc MATCHES "^(arm64|aarch64)$")
+        message(WARNING "Discord Social SDK not supported for this platform")
+        set(SUPPORT_DISCORD_SDK OFF)
+    endif()
+endif()
+
+## Setting Target Properties
+### Set a different name for each output binary depending on what build configuration is.
+### Usually it is separated by directory, but since we have the same directory for every
+### binary, we need to rename the binary. We don't rename if we are compiling on CI,
+### as we want the executable to be "Etterna" regardless of which version is deployed.
+if(NOT DEFINED ENV{CI})
+    set_target_properties(Etterna PROPERTIES
+            RUNTIME_OUTPUT_NAME_DEBUG "Etterna-debug"
+            RUNTIME_OUTPUT_NAME_RELEASE "Etterna"
+            RUNTIME_OUTPUT_NAME_MINSIZEREL "Etterna-MinSizeRelease"
+            RUNTIME_OUTPUT_NAME_RELWITHDEBINFO "Etterna-RelWithDebInfo")
+endif()
+
+### macOS and Linux place binary in root directory
+if(NOT WIN32)
+    set_target_properties(Etterna PROPERTIES RUNTIME_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}>")
+endif()
+
+## Includes
+target_include_directories(Etterna PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)   # Add gen files include search dirs
+target_include_directories(Etterna PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)          # Add src/ to include search dirs
+
+## Package Includes
+### OpenSSL is not used directly by our program, but we have to use OpenSSL first
+### in order to statically link. Once find_package is run once, it's results are cached
+if (WIN32 OR APPLE)
+    set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
+endif()
+set(OPENSSL_MSVC_STATIC_RT ON CACHE BOOL "" FORCE)
+
+find_package(OpenSSL 3.5 REQUIRED)
+find_package(Threads REQUIRED)
+target_link_libraries(Etterna PRIVATE Threads::Threads)
+target_link_libraries(Etterna PRIVATE OpenSSL::SSL)
+if(WIN32)
+    # These libraries are all included as the openssl instructions state they are needed for static linking.
+    # The source code does include some of these through "#pragma comment(lib, LIB)" though to keep it linking
+    # throughout the changes it may receive, we will include it here as-well.
+    target_link_libraries(Etterna PRIVATE CRYPT32.LIB)
+    target_link_libraries(Etterna PRIVATE WS2_32.LIB)
+    target_link_libraries(Etterna PRIVATE GDI32.LIB)
+    target_link_libraries(Etterna PRIVATE ADVAPI32.LIB)
+    target_link_libraries(Etterna PRIVATE USER32.LIB)
+endif()
+
+add_compile_definitions(STBI_FAILURE_USERMSG)
+
+# Load external libraries
+add_subdirectory(extern EXCLUDE_FROM_ALL) # EXCLUDE_FROM_ALL to exclude from cpack binary
+
+## Linking
+target_link_libraries(Etterna PRIVATE SQLiteCpp sqlite3)
+target_link_libraries(Etterna PRIVATE zlib)
+target_link_libraries(Etterna PRIVATE rapidjson)
+target_link_libraries(Etterna PRIVATE jwt-cpp)
+target_link_libraries(Etterna PRIVATE libluajit)
+
+if(SUPPORT_DISCORD_SDK)
+    add_compile_definitions(SUPPORT_DISCORD_SDK)
+    target_link_libraries(Etterna PRIVATE discord)
+endif()
+
+target_link_libraries(Etterna PRIVATE muFFT)
+target_link_libraries(Etterna PRIVATE glfw)
+target_link_libraries(Etterna PRIVATE ogg)
+target_link_libraries(Etterna PRIVATE vorbis)
+target_link_libraries(Etterna PRIVATE pcre)
+target_link_libraries(Etterna PRIVATE libmad)
+target_link_libraries(Etterna PRIVATE stb)
+target_link_libraries(Etterna PRIVATE miniz)
+target_link_libraries(Etterna PRIVATE libcurl)
+target_link_libraries(Etterna PRIVATE fmt::fmt)
+target_link_libraries(Etterna PRIVATE plog::plog)
+target_link_libraries(Etterna PRIVATE nowide::nowide)
+target_link_libraries(Etterna PRIVATE ghc_filesystem)
+
+if(WITH_VULKAN)
+    add_compile_definitions(Etterna PRIVATE WITH_VULKAN)
+    target_link_libraries(Etterna PRIVATE vk-bootstrap::vk-bootstrap)
+    target_link_libraries(Etterna PRIVATE VulkanMemoryAllocator)
+
+    find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
+    target_link_libraries(Etterna PRIVATE
+        Vulkan::Headers
+        Vulkan::shaderc_combined)
+
+    if(WITH_VULKAN_LINUX_EXTRAS AND UNIX AND NOT APPLE)
+        target_link_libraries(Etterna PRIVATE
+            glslang
+            MachineIndependent
+            OSDependent
+            GenericCodeGen
+            SPIRV
+            glslang-default-resource-limits
+            SPIRV-Tools
+            SPIRV-Tools-opt)
+    endif()
+endif()
+
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _proc)
+if(_proc MATCHES "^(arm64|aarch64)$")
+  target_link_libraries(Etterna PRIVATE sse2neon)
+endif()
+
+# If the user wants crashpad, and the target exists (in-case
+# the user wants it, but crashpad couldn't find python)
+if(WITH_CRASHPAD AND TARGET crashpad)
+    target_link_libraries(Etterna PRIVATE crashpad)
+endif()
+
+# OS Specific Initialization
+if(WIN32)
+    include(CMake/Helpers/CMakeWindows.cmake)
+elseif(APPLE)
+    include(CMake/Helpers/SetupFFMPEG.cmake)
+    include(CMake/Helpers/CMakeMacOS.cmake)
+elseif(UNIX)
+	if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" AND WITH_FFMPEG)
+        target_link_libraries(Etterna PRIVATE ffmpeg)
+	endif()
+    include(CMake/Helpers/CMakeLinux.cmake)
+endif()
+
+## Source - Add source to the Etterna target
+add_subdirectory(src/Etterna)
+add_subdirectory(src/arch)
+add_subdirectory(src/archutils)
+add_subdirectory(src/RageUtil)
+add_subdirectory(src/Core)
+
+## The source_group line creates the full visual studio filter layout
+get_target_property(sources Etterna SOURCES)
+source_group(TREE ${CMAKE_SOURCE_DIR} PREFIX "Etterna" FILES ${sources})
+
+# Compile Definitions
+if(DEFINED ENV{CI})
+    target_compile_definitions(Etterna PRIVATE ALLOW_CRASH_UPLOAD)
+endif()
+
+# Static Analysis
+include(CMake/Helpers/StaticAnalysis.cmake)
+
+# Documentation
+include(CMake/Helpers/DocumentationTools.cmake)
+
+# CPack Initialization
+include(CMake/Helpers/CPackSetup.cmake)
+include(CPack)

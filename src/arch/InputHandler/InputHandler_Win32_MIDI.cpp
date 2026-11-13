@@ -1,7 +1,7 @@
-#include "global.h"
-#include "RageUtil.h"
+#include "Etterna/Globals/global.h"
+#include "RageUtil/Utils/RageUtil.h"
 #include "InputHandler_Win32_MIDI.h"
-#include "RageLog.h"
+#include "Core/Services/Locator.hpp"
 
 #include <windows.h>
 #include <mmsystem.h>
@@ -14,11 +14,11 @@ static HMIDIIN g_device;
 static void CALLBACK
 midiCallback(HMIDIIN g_device,
 			 UINT status,
-			 DWORD instancePtr,
-			 DWORD data,
+			 DWORD_PTR instancePtr,
+			 DWORD_PTR data,
 			 DWORD timestamp);
 
-static RString
+static std::string
 GetMidiError(MMRESULT result)
 {
 	char szError[256];
@@ -40,19 +40,19 @@ InputHandler_Win32_MIDI::InputHandler_Win32_MIDI()
 
 	MMRESULT result = midiInOpen(&g_device,
 								 device_id,
-								 (DWORD)&midiCallback,
-								 (DWORD)this,
+								 (DWORD_PTR)&midiCallback,
+								 (DWORD_PTR)this,
 								 CALLBACK_FUNCTION);
 	if (result != MMSYSERR_NOERROR) {
-		LOG->Warn("Error opening MIDI device: %s",
-				  GetMidiError(result).c_str());
+		Locator::getLogger()->warn("Error opening MIDI device: {}",
+								   GetMidiError(result).c_str());
 		return;
 	}
 
 	result = midiInStart(g_device);
 	if (result != MMSYSERR_NOERROR) {
-		LOG->Warn("Error starting MIDI device: %s",
-				  GetMidiError(result).c_str());
+		Locator::getLogger()->warn("Error starting MIDI device: {}",
+								   GetMidiError(result).c_str());
 		return;
 	}
 }
@@ -63,22 +63,22 @@ InputHandler_Win32_MIDI::~InputHandler_Win32_MIDI()
 
 	result = midiInReset(g_device);
 	if (result != MMSYSERR_NOERROR) {
-		LOG->Warn("Error resetting MIDI device: %s",
-				  GetMidiError(result).c_str());
+		Locator::getLogger()->warn("Error resetting MIDI device: {}",
+								   GetMidiError(result).c_str());
 		return;
 	}
 
 	result = midiInClose(g_device);
 	if (result != MMSYSERR_NOERROR) {
-		LOG->Warn("Error closing MIDI device: %s",
-				  GetMidiError(result).c_str());
+		Locator::getLogger()->warn("Error closing MIDI device: {}",
+								   GetMidiError(result).c_str());
 		return;
 	}
 }
 
 void
 InputHandler_Win32_MIDI::GetDevicesAndDescriptions(
-  vector<InputDeviceInfo>& vDevicesOut)
+  std::vector<InputDeviceInfo>& vDevicesOut)
 {
 	if (m_bFoundDevice) {
 		vDevicesOut.push_back(InputDeviceInfo(DEVICE_MIDI, "Win32_MIDI"));
@@ -88,8 +88,8 @@ InputHandler_Win32_MIDI::GetDevicesAndDescriptions(
 static void CALLBACK
 midiCallback(HMIDIIN device,
 			 UINT status,
-			 DWORD instancePtr,
-			 DWORD data,
+			 DWORD_PTR instancePtr,
+			 DWORD_PTR data,
 			 DWORD timestamp)
 {
 	if (status == MIM_DATA) {

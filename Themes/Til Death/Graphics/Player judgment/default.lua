@@ -1,25 +1,68 @@
--- Removed all the protiming junk, it's obsoleted
-local keymode = getCurrentKeyMode()
 local allowedCustomization = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).CustomizeGameplay
 local c
-local values = {
-	JudgeX = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplayXYCoordinates[keymode].JudgeX,
-	JudgeY = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplayXYCoordinates[keymode].JudgeY,
-	JudgeZoom = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).GameplaySizes[keymode].JudgeZoom
-}
--- CUZ WIDESCREEN DEFAULTS SCREAAAAAAAAAAAAAAAAAAAAAAAAAM -mina
-if IsUsingWideScreen() then
-	values.JudgeY = values.JudgeY - 5
-	values.JudgeX = values.JudgeX + 5
-end
+local enabledJudgment = playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).JudgmentText
+local JTEnabled = JudgementTweensEnabled()
+
+--[[
+-- old commands from metrics [Judgment]:
+JudgmentW1Command=shadowlength,0;diffusealpha,1;zoom,1.3;linear,0.05;zoom,1;sleep,0.8;smooth,0.1;zoomy,0.5;zoomx,2;diffusealpha,0;glowblink;effectperiod,0.05;effectcolor1,color("1,1,1,0");effectcolor2,color("1,1,1,0.25")
+JudgmentW2Command=shadowlength,0;diffusealpha,1;zoom,1.2;linear,0.05;zoom,1;sleep,0.8;smooth,0.1;zoomy,0.5;zoomx,2;diffusealpha,0
+JudgmentW3Command=shadowlength,0;diffusealpha,1;zoom,1.2;linear,0.05;zoom,1;sleep,0.8;smooth,0.1;zoomy,0.5;zoomx,2;diffusealpha,0;
+JudgmentW4Command=shadowlength,0;diffusealpha,1;zoom,1.1;linear,0.05;zoom,1;sleep,0.8;smooth,0.1;zoomy,0.5;zoomx,2;diffusealpha,0;
+JudgmentW5Command=shadowlength,0;diffusealpha,1;zoom,1.05;linear,0.05;zoom,1;sleep,0.8;smooth,0.1;zoomy,0.5;zoomx,2;diffusealpha,0;
+JudgmentMissCommand=shadowlength,0;diffusealpha,1;zoom,1.05;linear,0.05;zoom,1;sleep,0.8;smooth,0.1;zoomy,0.5;zoomx,2;diffusealpha,0;
+]]
 
 local JudgeCmds = {
-	TapNoteScore_W1 = THEME:GetMetric("Judgment", "JudgmentW1Command"),
-	TapNoteScore_W2 = THEME:GetMetric("Judgment", "JudgmentW2Command"),
-	TapNoteScore_W3 = THEME:GetMetric("Judgment", "JudgmentW3Command"),
-	TapNoteScore_W4 = THEME:GetMetric("Judgment", "JudgmentW4Command"),
-	TapNoteScore_W5 = THEME:GetMetric("Judgment", "JudgmentW5Command"),
-	TapNoteScore_Miss = THEME:GetMetric("Judgment", "JudgmentMissCommand")
+	TapNoteScore_W1 = function(self)
+		local jz = MovableValues.JudgeZoom or 1
+		self:shadowlength(0):diffusealpha(1):zoom(1.3 * jz)
+		self:linear(0.05)
+		self:zoom(1 * jz)
+		self:sleep(0.8):smooth(0.1)
+		self:zoomy(0.5 * jz):zoomx(2 * jz):diffusealpha(0)
+		self:glowblink():effectperiod(0.05):effectcolor1(color("1,1,1,0")):effectcolor2(color("1,1,1,0.25"))
+	end,
+	TapNoteScore_W2 = function(self)
+		local jz = MovableValues.JudgeZoom or 1
+		self:shadowlength(0):diffusealpha(1):zoom(1.2 * jz)
+		self:linear(0.05)
+		self:zoom(1 * jz)
+		self:sleep(0.8):smooth(0.1)
+		self:zoomy(0.5 * jz):zoomx(2 * jz):diffusealpha(0)
+	end,
+	TapNoteScore_W3 = function(self)
+		local jz = MovableValues.JudgeZoom or 1
+		self:shadowlength(0):diffusealpha(1):zoom(1.2 * jz)
+		self:linear(0.05)
+		self:zoom(1 * jz)
+		self:sleep(0.8):smooth(0.1)
+		self:zoomy(0.5 * jz):zoomx(2 * jz):diffusealpha(0)
+	end,
+	TapNoteScore_W4 = function(self)
+		local jz = MovableValues.JudgeZoom or 1
+		self:shadowlength(0):diffusealpha(1):zoom(1.1 * jz)
+		self:linear(0.05)
+		self:zoom(1 * jz)
+		self:sleep(0.8):smooth(0.1)
+		self:zoomy(0.5 * jz):zoomx(2 * jz):diffusealpha(0)
+	end,
+	TapNoteScore_W5 = function(self)
+		local jz = MovableValues.JudgeZoom or 1
+		self:shadowlength(0):diffusealpha(1):zoom(1.05 * jz)
+		self:linear(0.05)
+		self:zoom(1 * jz)
+		self:sleep(0.8):smooth(0.1)
+		self:zoomy(0.5 * jz):zoomx(2 * jz):diffusealpha(0)
+	end,
+	TapNoteScore_Miss = function(self)
+		local jz = MovableValues.JudgeZoom or 1
+		self:shadowlength(0):diffusealpha(1):zoom(1.05 * jz)
+		self:linear(0.05)
+		self:zoom(1 * jz)
+		self:sleep(0.8):smooth(0.1)
+		self:zoomy(0.5 * jz):zoomx(2 * jz):diffusealpha(0)
+	end,
 }
 
 local TNSFrames = {
@@ -31,107 +74,40 @@ local TNSFrames = {
 	TapNoteScore_Miss = 5
 }
 
-local propsFunctions = {
-	X = Actor.x,
-	Y = Actor.y,
-	Zoom = Actor.zoom
-}
-
-local movable = {
-	current = "",
-	pressed = false,
-	DeviceButton_1 = {
-		name = "Judge",
-		element = {},
-		children = {"Judgment"},
-		properties = {"X", "Y"},
-		elementTree = "GameplayXYCoordinates",
-		condition = true,
-		DeviceButton_up = {
-			property = "Y",
-			inc = -5
-		},
-		DeviceButton_down = {
-			property = "Y",
-			inc = 5
-		},
-		DeviceButton_left = {
-			property = "X",
-			inc = -5
-		},
-		DeviceButton_right = {
-			property = "X",
-			inc = 5
-		}
-	},
-	DeviceButton_2 = {
-		name = "Judge",
-		element = {},
-		children = {"Judgment"},
-		properties = {"Zoom"},
-		elementTree = "GameplaySizes",
-		condition = true,
-		DeviceButton_up = {
-			property = "Zoom",
-			inc = 0.01
-		},
-		DeviceButton_down = {
-			property = "Zoom",
-			inc = -0.01
-		}
-	}
-}
-
-local function input(event)
-	if getAutoplay() ~= 0 then
-		local button = event.DeviceInput.button
-		local notReleased = not (event.type == "InputEventType_Release")
-		if movable[button] then
-			movable.pressed = notReleased
-			movable.current = button
-		end
-
-		local current = movable[movable.current]
-		if movable.pressed and current[button] and current.condition and notReleased then
-			local curKey = current[button]
-			local prop = current.name .. curKey.property
-			local newVal = values[prop] + curKey.inc
-			values[prop] = newVal
-			for _, attribute in ipairs(current.children) do
-				propsFunctions[curKey.property](current.element[attribute], newVal)
-			end
-			playerConfig:get_data(pn_to_profile_slot(PLAYER_1))[current.elementTree][keymode][prop] = newVal
-			playerConfig:set_dirty(pn_to_profile_slot(PLAYER_1))
-			playerConfig:save(pn_to_profile_slot(PLAYER_1))
-		end
+local function judgmentZoom(value)
+    c.Judgment:zoom(value)
+    if allowedCustomization then
+	    c.Border:playcommand("ChangeWidth", {val = c.Judgment:GetZoomedWidth()})
+	    c.Border:playcommand("ChangeHeight", {val = c.Judgment:GetZoomedHeight()})
 	end
-	return false
 end
 
-local t =
-	Def.ActorFrame {
+local t = Def.ActorFrame {
 	Def.Sprite {
-		Texture = "../../../../" .. getAssetPath("judgement"),
+		Texture = "../../../../" .. getAssetPath("judgment"),
 		Name = "Judgment",
 		InitCommand = function(self)
-			self:pause():visible(false):xy(values.JudgeX, values.JudgeY):zoom(values.JudgeZoom)
+			self:pause():visible(false):xy(MovableValues.JudgeX, MovableValues.JudgeY)
 		end,
 		ResetCommand = function(self)
 			self:finishtweening():stopeffect():visible(false)
 		end
 	},
-	InitCommand = function(self)
-		c = self:GetChildren()
-		movable.DeviceButton_1.element = c
-		movable.DeviceButton_2.element = c
-	end,
 	OnCommand = function(self)
-		if (allowedCustomization) then
-			SCREENMAN:GetTopScreen():AddInputCallback(input)
+		c = self:GetChildren()
+		judgmentZoom(MovableValues.JudgeZoom)
+		if allowedCustomization then
+			Movable.DeviceButton_1.element = c
+			Movable.DeviceButton_2.element = c
+			Movable.DeviceButton_1.condition = enabledJudgment
+			Movable.DeviceButton_2.condition = enabledJudgment
+			Movable.DeviceButton_2.DeviceButton_up.arbitraryFunction = judgmentZoom
+			Movable.DeviceButton_2.DeviceButton_down.arbitraryFunction = judgmentZoom
+			Movable.DeviceButton_1.propertyOffsets = {self:GetTrueX() , self:GetTrueY()}	-- centered to screen/valigned
 		end
 	end,
 	JudgmentMessageCommand = function(self, param)
-		if param.HoldNoteScore then
+		if param.HoldNoteScore or param.FromReplay then
 			return
 		end
 		local iNumStates = c.Judgment:GetNumStates()
@@ -139,16 +115,25 @@ local t =
 		if not iFrame then
 			return
 		end
+		if iNumStates == 12 then
+			iFrame = iFrame * 2
+			if not param.Early then
+				iFrame = iFrame + 1
+			end
+		end
 
 		self:playcommand("Reset")
 		c.Judgment:visible(true)
 		c.Judgment:setstate(iFrame)
-		JudgeCmds[param.TapNoteScore](c.Judgment)
-	end
+		if JTEnabled then
+			JudgeCmds[param.TapNoteScore](c.Judgment)
+		end
+	end,
+	MovableBorder(0, 0, 1, MovableValues.JudgeX, MovableValues.JudgeY)
 }
 
-if playerConfig:get_data(pn_to_profile_slot(PLAYER_1)).JudgmentText then
+if enabledJudgment then
 	return t
 end
 
-return {}
+return Def.ActorFrame {}

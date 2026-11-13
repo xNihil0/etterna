@@ -1,0 +1,34 @@
+--- Backwards compatibility configuration
+-- This file is for some Lua backwards compatibility purposes.
+-- Add to this as C++ Lua bindings become refactored or renamed as needed.
+-- @module 00_compat
+
+-- ArchHooks
+-- used to be referred to as HOOKS:f(etc)
+-- now Arch.f(etc)
+-- DO NOT SHADOW THIS NAME
+HOOKS = {}
+-- old names for compat
+Arch["AppHasFocus"] = Arch.isGameFocused
+Arch["GetArchName"] = Arch.getSystem
+Arch["GetClipboard"] = Arch.getClipboard
+Arch["ShowCursor"] = Arch.setCursorVisible
+for k,v in pairs(Arch) do
+    HOOKS[k] = function(_, ...) return v(...) end
+end
+
+
+-- DownloadManager
+-- Alternate functions not requiring a reference to DLMAN
+function ShowEditorSite()
+    return DLMAN:ShowEditorSite()
+end
+function ShowProjectSite()
+    return DLMAN:ShowProjectSite()
+end
+function ShowProjectReleases()
+    return DLMAN:ShowProjectReleases()
+end
+function ShowBugReportSite()
+    return DLMAN:ShowBugReportSite()
+end
